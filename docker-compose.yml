@@ -1,0 +1,37 @@
+# docker-compose.yml — VPS Hostinger
+# App Next.js: Supabase (externo, não está aqui)
+# n8n: SQLite local na VPS (padrão, sem banco externo)
+# Evolution API: banco SQLite ou Redis local
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    environment:
+      # SQLite (padrão) — sem banco externo necessário na VPS
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL}
+      - N8N_API_KEY=${N8N_API_KEY}
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  evolution:
+    image: atendai/evolution-api:latest
+    restart: unless-stopped
+    environment:
+      - SERVER_URL=${EVOLUTION_API_URL}
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_GLOBAL_TOKEN}
+      - DATABASE_ENABLED=false
+    ports:
+      - "8080:8080"
+    volumes:
+      - evolution_data:/evolution/instances
+
+volumes:
+  n8n_data:
+  evolution_data:
