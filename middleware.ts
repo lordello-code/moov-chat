@@ -14,7 +14,7 @@ export default auth((req) => {
     return NextResponse.next()
   }
 
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.redirect(new URL('/auth/signin', req.url))
   }
 
