@@ -1,0 +1,650 @@
+// prisma/schema.prisma — MOOV Chat
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum TenantStatus {
+  ONBOARDING
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum PlanType {
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  GERENTE
+  VENDEDOR
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum LeadState {
+  NOVO_LEAD
+  INTERESSADO
+  QUALIFICADO
+  NEGOCIANDO
+  AGUARDANDO_APROVACAO
+  AGUARDANDO_VISITA
+  VISITOU
+  PROPOSTA_ENVIADA
+  PERDIDO
+  VENDIDO
+}
+
+enum ConversationState {
+  ATIVA_IA
+  AGUARDANDO_RESPOSTA_CLIENTE
+  AGUARDANDO_VENDEDOR
+  EM_ATENDIMENTO_HUMANO
+  PAUSADA
+  FINALIZADA
+  REATIVACAO_AGENDADA
+}
+
+enum AgentType {
+  ORQUESTRADOR
+  SDR
+  VENDEDOR_IA
+  QA
+  NOTIFICADOR_SLA
+}
+
+enum MessageActorType {
+  SDR_IA
+  VENDEDOR_IA
+  ORQUESTRADORA_IA
+  HUMANO_VENDEDOR
+  HUMANO_GERENTE
+  SISTEMA
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageContentType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  LOCATION
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  UNAVAILABLE
+  ON_ORDER
+  RESERVED
+}
+
+enum MotorcycleCondition {
+  EXCELLENT
+  GOOD
+  REGULAR
+  POOR
+}
+
+enum AlertType {
+  SLA_VENDEDOR
+  SLA_GERENTE
+  LEAD_QUENTE
+  CONCORRENTE_DETECTADO
+  URGENCIA_DETECTADA
+  ERRO_QA
+  PRECO_PENDENTE
+  ONBOARDING
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum ScheduledTaskType {
+  FOLLOWUP_10MIN
+  FOLLOWUP_6H
+  FOLLOWUP_3DIAS
+  SLA_ALERT_10MIN
+  SLA_ALERT_30MIN
+  SLA_ALERT_1H
+  SLA_ALERT_2H
+  RELATORIO_DIARIO
+  REATIVACAO
+}
+
+enum ScheduledTaskStatus {
+  PENDING
+  RUNNING
+  DONE
+  CANCELLED
+  FAILED
+}
+
+enum PriceApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LeadDistributionType {
+  ROUND_ROBIN
+  VENDEDOR_FIXO
+  MANUAL
+}
+
+enum LeadOrigin {
+  WHATSAPP
+  MANUAL
+  IMPORTADO
+}
+
+// ─── Models — Infraestrutura SaaS ────────────────────────────────────────────
+
+model Plan {
+  id               String   @id @default(cuid())
+  name             String
+  type             PlanType
+  maxLeadsPerMonth Int
+  maxVendedores    Int
+  priceMonthly     Decimal  @db.Decimal(10, 2)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenants          Tenant[]
+
+  @@map("plans")
+}
+
+model Tenant {
+  id                       String               @id @default(cuid())
+  slug                     String               @unique
+  name                     String
+  razaoSocial              String?
+  status                   TenantStatus         @default(ONBOARDING)
+  planId                   String
+  plan                     Plan                 @relation(fields: [planId], references: [id])
+  whatsappPhone            String?              @unique
+  whatsappConnected        Boolean              @default(false)
+  evolutionInstanceName    String?              @unique
+  phone                    String?
+  email                    String?
+  address                  String?
+  city                     String?
+  state                    String?
+  zipCode                  String?
+  businessHoursStart       String?
+  businessHoursEnd         String?
+  businessDays             String[]
+  leadDistributionType     LeadDistributionType @default(ROUND_ROBIN)
+  policyPriceApproval      Boolean              @default(false)
+  policyReservation        Boolean              @default(false)
+  policyExchange           Boolean              @default(false)
+  policyOnOrder            Boolean              @default(false)
+  policyPixEnabled         Boolean              @default(false)
+  policyPaymentWarning     String?              @db.Text
+  policySecurityMessage    String?              @db.Text
+  toneOfVoice              String?              @db.Text
+  iaMaxConsecutiveMessages Int                  @default(3)
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  users            User[]
+  leads            Lead[]
+  conversations    Conversation[]
+  messages         Message[]
+  products0km      TenantProduct0km[]
+  usedMotorcycles  UsedMotorcycle[]
+  accessories      Accessory[]
+  campaigns        Campaign[]
+  promotionalItems PromotionalItem[]
+  promptConfigs    PromptConfig[]
+  eventLogs        EventLog[]
+  scheduledTasks   ScheduledTask[]
+  alerts           Alert[]
+  dailyReports     DailyReport[]
+  priceApprovals   PriceApproval[]
+  briefing         Briefing?
+
+  @@map("tenants")
+}
+
+model Briefing {
+  id                 String    @id @default(cuid())
+  tenantId           String    @unique
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  brands             String[]
+  currentCampaigns   String?   @db.Text
+  additionalPolicies String?   @db.Text
+  completedAt        DateTime?
+  validatedAt        DateTime?
+  validatedById      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@map("briefings")
+}
+
+// ─── Models — Usuários ────────────────────────────────────────────────────────
+
+model User {
+  id                 String     @id @default(cuid())
+  tenantId           String?
+  tenant             Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name               String
+  email              String     @unique
+  passwordHash       String
+  phone              String?
+  whatsappNotif      String?
+  role               UserRole
+  status             UserStatus @default(ACTIVE)
+  lastLeadAssignedAt DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  assignedLeads      Lead[]          @relation("AssignedLeads")
+  managedLeads       Lead[]          @relation("ManagedLeads")
+  conversations      Conversation[]
+  alerts             Alert[]
+  priceApprovals     PriceApproval[]
+  promptsCreated     PromptConfig[]
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+// ─── Models — Core de Atendimento ────────────────────────────────────────────
+
+model Lead {
+  id                  String     @id @default(cuid())
+  tenantId            String
+  tenant              Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                String?
+  phone               String
+  origin              LeadOrigin @default(WHATSAPP)
+  state               LeadState  @default(NOVO_LEAD)
+  assignedVendedorId  String?
+  assignedVendedor    User?      @relation("AssignedLeads", fields: [assignedVendedorId], references: [id])
+  assignedGerenteId   String?
+  assignedGerente     User?      @relation("ManagedLeads",  fields: [assignedGerenteId],  references: [id])
+  primaryInterest     String?
+  notes               String?    @db.Text
+  leadScore           Int        @default(0)
+  isHot               Boolean    @default(false)
+  hasUrgency          Boolean    @default(false)
+  mentionedCompetitor Boolean    @default(false)
+  lossReason          String?
+  lossDetail          String?    @db.Text
+  firstContactAt      DateTime?
+  firstResponseAt     DateTime?
+  soldAt              DateTime?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  conversations       Conversation[]
+  eventLogs           EventLog[]
+  scheduledTasks      ScheduledTask[]
+  alerts              Alert[]
+  assignments         LeadAssignment[]
+
+  @@unique([tenantId, phone])
+  @@index([tenantId, isHot])
+  @@index([assignedVendedorId])
+  @@map("leads")
+}
+
+model LeadAssignment {
+  id         String   @id @default(cuid())
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  vendedorId String
+  assignedAt DateTime @default(now())
+  assignedBy String?
+  reason     String?
+
+  @@index([leadId])
+  @@map("lead_assignments")
+}
+
+model Conversation {
+  id                    String            @id @default(cuid())
+  tenantId              String
+  tenant                Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadId                String
+  lead                  Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  state                 ConversationState @default(ATIVA_IA)
+  currentAgent          AgentType?
+  humanAttendantId      String?
+  humanAttendant        User?             @relation(fields: [humanAttendantId], references: [id])
+  humanTookOverAt       DateTime?
+  humanSlaStartedAt     DateTime?
+  consecutiveIaMessages Int               @default(0)
+  totalMessages         Int               @default(0)
+  lastMessageAt         DateTime?
+  lastClientMessageAt   DateTime?
+  lastIaMessageAt       DateTime?
+  lastHumanMessageAt    DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  messages         Message[]
+  eventLogs        EventLog[]
+  scheduledTasks   ScheduledTask[]
+  alerts           Alert[]
+  handoffSummaries HandoffSummary[]
+
+  @@index([tenantId])
+  @@index([leadId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String             @id @default(cuid())
+  tenantId       String
+  tenant         Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  actorType      MessageActorType
+  actorId        String?
+  direction      MessageDirection
+  contentType    MessageContentType @default(TEXT)
+  contentText    String?            @db.Text
+  mediaUrl       String?
+  mediaCaption   String?
+  whatsappMsgId  String?            @unique
+  status         MessageStatus      @default(PENDING)
+  isInternal     Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+
+  @@index([conversationId])
+  @@index([tenantId])
+  @@map("messages")
+}
+
+model HandoffSummary {
+  id                 String       @id @default(cuid())
+  conversationId     String
+  conversation       Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  vendedorId         String?
+  clientName         String?
+  clientPhone        String
+  contactReason      String?      @db.Text
+  modelInterest      String?
+  answeredQuestions  String?      @db.Text
+  urgencySignals     String?      @db.Text
+  negotiationStatus  String?      @db.Text
+  handoffReason      String
+  nextStepSuggested  String?      @db.Text
+  createdAt          DateTime     @default(now())
+
+  @@index([conversationId])
+  @@map("handoff_summaries")
+}
+
+// ─── Models — Catálogo ────────────────────────────────────────────────────────
+
+model GlobalProduct0km {
+  id             String   @id @default(cuid())
+  brand          String
+  model          String
+  version        String?
+  displacement   Int?
+  description    String?  @db.Text
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  tenantProducts TenantProduct0km[]
+
+  @@unique([brand, model, version])
+  @@map("global_products_0km")
+}
+
+model TenantProduct0km {
+  id              String             @id @default(cuid())
+  tenantId        String
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  globalProductId String
+  globalProduct   GlobalProduct0km   @relation(fields: [globalProductId], references: [id])
+  modelYear       Int?
+  color           String?
+  price           Decimal            @db.Decimal(10, 2)
+  availability    AvailabilityStatus @default(AVAILABLE)
+  imageUrls       String[]
+  videoUrl        String?
+  notes           String?            @db.Text
+  campaignId      String?
+  campaign        Campaign?          @relation(fields: [campaignId], references: [id])
+  pendingPrice    Decimal?           @db.Decimal(10, 2)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([tenantId])
+  @@map("tenant_products_0km")
+}
+
+model UsedMotorcycle {
+  id           String              @id @default(cuid())
+  tenantId     String
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  brand        String
+  model        String
+  version      String?
+  year         Int
+  mileage      Int
+  color        String?
+  price        Decimal             @db.Decimal(10, 2)
+  condition    MotorcycleCondition
+  notes        String?             @db.Text
+  imageUrls    String[]
+  availability AvailabilityStatus  @default(AVAILABLE)
+  enteredAt    DateTime            @default(now())
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([tenantId])
+  @@map("used_motorcycles")
+}
+
+model Accessory {
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String
+  category      String?
+  sku           String?
+  price         Decimal   @db.Decimal(10, 2)
+  description   String?
+  imageUrl      String?
+  compatibility String?
+  isAvailable   Boolean   @default(true)
+  campaignId    String?
+  campaign      Campaign? @relation(fields: [campaignId], references: [id])
+  validUntil    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@map("accessories")
+}
+
+model Campaign {
+  id               String   @id @default(cuid())
+  tenantId         String
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String
+  description      String?  @db.Text
+  startsAt         DateTime
+  endsAt           DateTime
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  products0km      TenantProduct0km[]
+  promotionalItems PromotionalItem[]
+  accessories      Accessory[]
+
+  @@index([tenantId])
+  @@map("campaigns")
+}
+
+model PromotionalItem {
+  id          String    @id @default(cuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  campaignId  String?
+  campaign    Campaign? @relation(fields: [campaignId], references: [id])
+  name        String
+  description String?
+  eligibility String?
+  validUntil  DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@map("promotional_items")
+}
+
+model PriceApproval {
+  id            String              @id @default(cuid())
+  tenantId      String
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productType   String
+  productId     String
+  currentPrice  Decimal             @db.Decimal(10, 2)
+  proposedPrice Decimal             @db.Decimal(10, 2)
+  requestedById String?
+  approvedById  String?
+  approver      User?               @relation(fields: [approvedById], references: [id])
+  status        PriceApprovalStatus @default(PENDING)
+  notes         String?
+  resolvedAt    DateTime?
+  createdAt     DateTime            @default(now())
+
+  @@index([tenantId])
+  @@map("price_approvals")
+}
+
+// ─── Models — IA, Automação e Relatórios ─────────────────────────────────────
+
+model PromptConfig {
+  id                String    @id @default(cuid())
+  tenantId          String?
+  tenant            Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentType         AgentType
+  version           Int       @default(1)
+  promptBase        String    @db.Text
+  blockStoreContext String?   @db.Text
+  blockPolicies     String?   @db.Text
+  blockSecurity     String?   @db.Text
+  blockCampaigns    String?   @db.Text
+  blockHandoff      String?   @db.Text
+  blockToneOfVoice  String?   @db.Text
+  isActive          Boolean   @default(true)
+  createdById       String?
+  createdBy         User?     @relation(fields: [createdById], references: [id])
+  createdAt         DateTime  @default(now())
+
+  @@unique([tenantId, agentType, version])
+  @@index([tenantId])
+  @@map("prompt_configs")
+}
+
+model EventLog {
+  id             String        @id @default(cuid())
+  tenantId       String
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadId         String?
+  lead           Lead?         @relation(fields: [leadId], references: [id])
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+  eventType      String
+  actorType      String?
+  actorId        String?
+  severity       AlertSeverity @default(INFO)
+  payload        Json?
+  createdAt      DateTime      @default(now())
+
+  @@index([tenantId, eventType])
+  @@index([conversationId])
+  @@map("event_logs")
+}
+
+model ScheduledTask {
+  id             String              @id @default(cuid())
+  tenantId       String
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadId         String?
+  lead           Lead?               @relation(fields: [leadId], references: [id])
+  conversationId String?
+  conversation   Conversation?       @relation(fields: [conversationId], references: [id])
+  taskType       ScheduledTaskType
+  executeAt      DateTime
+  status         ScheduledTaskStatus @default(PENDING)
+  payload        Json?
+  errorMessage   String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([status, executeAt])
+  @@index([tenantId])
+  @@map("scheduled_tasks")
+}
+
+model Alert {
+  id             String        @id @default(cuid())
+  tenantId       String
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadId         String?
+  lead           Lead?         @relation(fields: [leadId], references: [id])
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id])
+  type           AlertType
+  severity       AlertSeverity @default(WARNING)
+  message        String        @db.Text
+  isRead         Boolean       @default(false)
+  readAt         DateTime?
+  createdAt      DateTime      @default(now())
+
+  @@index([tenantId, isRead])
+  @@index([userId])
+  @@map("alerts")
+}
+
+model DailyReport {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reportDate      DateTime @db.Date
+  payload         Json
+  sentViaWhatsapp Boolean  @default(false)
+  sentAt          DateTime?
+  createdAt       DateTime @default(now())
+
+  @@unique([tenantId, reportDate])
+  @@index([tenantId])
+  @@map("daily_reports")
+}
