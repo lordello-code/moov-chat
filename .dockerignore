@@ -1,0 +1,48 @@
+# Dependências locais
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+.next
+out
+build
+dist
+
+# Worktrees e git
+.git
+.gitignore
+.worktrees
+
+# Environment — NUNCA incluir no contexto Docker
+.env
+.env.*
+!.env.example
+
+# Testes e documentação de desenvolvimento
+tests/
+__tests__/
+*.test.ts
+*.spec.ts
+playwright.config.ts
+coverage/
+
+# Ferramentas de desenvolvimento
+.eslintrc*
+.prettierrc*
+*.md
+docs/
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
