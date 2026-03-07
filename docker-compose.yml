@@ -1,5 +1,7 @@
-# docker-compose.yml — Serviços da VPS Hostinger
-# Banco de dados: Supabase (externo) — não inclui postgres aqui
+# docker-compose.yml — VPS Hostinger
+# App Next.js: Supabase (externo, não está aqui)
+# n8n: SQLite local na VPS (padrão, sem banco externo)
+# Evolution API: banco SQLite ou Redis local
 version: '3.8'
 
 services:
@@ -7,16 +9,11 @@ services:
     image: n8nio/n8n:latest
     restart: unless-stopped
     environment:
-      # n8n usa o Supabase como banco próprio (banco separado "n8n" no Supabase)
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=${N8N_DB_HOST}
-      - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=n8n
-      - DB_POSTGRESDB_USER=${N8N_DB_USER}
-      - DB_POSTGRESDB_PASSWORD=${N8N_DB_PASSWORD}
+      # SQLite (padrão) — sem banco externo necessário na VPS
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - WEBHOOK_URL=${N8N_WEBHOOK_URL}
       - N8N_API_KEY=${N8N_API_KEY}
+      - GENERIC_TIMEZONE=America/Sao_Paulo
     ports:
       - "5678:5678"
     volumes:
@@ -29,11 +26,12 @@ services:
       - SERVER_URL=${EVOLUTION_API_URL}
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_GLOBAL_TOKEN}
-      - DATABASE_ENABLED=true
-      # Evolution também usa o Supabase (banco separado "evolution")
-      - DATABASE_CONNECTION_URI=${EVOLUTION_DB_URI}
+      - DATABASE_ENABLED=false
     ports:
       - "8080:8080"
+    volumes:
+      - evolution_data:/evolution/instances
 
 volumes:
   n8n_data:
+  evolution_data:
