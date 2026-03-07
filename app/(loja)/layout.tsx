@@ -5,16 +5,14 @@ import { Home, List, MessageSquare, BarChart2, Bike, Users, Settings, CheckSquar
 
 export default async function LojaLayout({
   children,
-  params,
 }: {
   children: React.ReactNode
-  params: Promise<{ tenantSlug: string }>
 }) {
   const session = await auth()
   if (!session?.user) redirect('/auth/signin')
 
-  const { tenantSlug } = await params
-  const slug = tenantSlug ?? session.user.tenantSlug ?? ''
+  // Para SUPER_ADMIN sem tenant, usa string vazia (não acessa rotas de loja normalmente)
+  const slug = session.user.tenantSlug ?? ''
 
   const lojaNavItems = [
     { label: 'Início',      href: `/${slug}/inicio`,     icon: Home },
