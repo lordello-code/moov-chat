@@ -49,11 +49,22 @@ export async function POST(req: Request) {
     return err('Campos obrigatórios: name, slug, planId, gerenteNome, gerenteEmail')
   }
 
+  console.log('[POST /api/admin/tenants] planId recebido:', planId)
+
+  try {
+    const plan = await prisma.plan.findUnique({ where: { id: planId } })
+    console.log('[POST /api/admin/tenants] plan encontrado:', plan?.name ?? 'NÃO ENCONTRADO')
+    if (!plan) return err(`Plano não encontrado: ${planId}`, 'PLAN_NOT_FOUND', 404)
+  } catch (e: any) {
+    return err('Erro ao buscar plano: ' + e.message, 'DB_ERROR', 500)
+  }
+
   const existing = await prisma.tenant.findUnique({ where: { slug } })
   if (existing) return err('Slug já em uso', 'SLUG_TAKEN', 409)
 
   const hash = await bcrypt.hash('mudar123', 12)
 
+  try {
   const tenant = await prisma.tenant.create({
     data: {
       name, razaoSocial, slug, planId,
@@ -73,4 +84,8 @@ export async function POST(req: Request) {
   })
 
   return ok(tenant, 201)
+  } catch (e: any) {
+    console.error('[POST /api/admin/tenants] Erro:', e.message)
+    return err(e?.message ?? 'Erro interno ao criar loja', 'INTERNAL_ERROR', 500)
+  }
 }
