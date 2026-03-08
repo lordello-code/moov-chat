@@ -42,8 +42,8 @@ export default async function LojaDetailPage({
             {tenant.status}
           </Badge>
           <Link
-            href="/admin/lojas"
-            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+            href="/lojas"
+            className="inline-flex items-center px-3 py-1.5 rounded-lg border border-border bg-background text-sm hover:bg-muted transition-colors"
           >
             ← Voltar
           </Link>

@@ -42,7 +42,7 @@ export default function NovaLojaPage() {
         setError(json.error?.message ?? 'Erro ao criar loja')
         return
       }
-      router.push('/admin/lojas')
+      router.push('/lojas')
     } catch {
       setError('Erro de conexão')
     } finally {
@@ -119,7 +119,7 @@ export default function NovaLojaPage() {
           <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90">
             {loading ? 'Criando...' : 'Criar Loja'}
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.push('/admin/lojas')}>
+          <Button type="button" variant="outline" onClick={() => router.push('/lojas')}>
             Cancelar
           </Button>
         </div>
