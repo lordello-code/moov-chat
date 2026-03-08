@@ -11,8 +11,8 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"]!,
-    // directUrl é necessário para migrations com Supabase PgBouncer
-    ...(process.env["DIRECT_URL"] ? { directUrl: process.env["DIRECT_URL"] } : {}),
+    // Migrations precisam de conexão direta (porta 5432) — PgBouncer (6543) trava DDL
+    // PrismaClient em runtime usa o PrismaPg adapter com DATABASE_URL (não usa esta url)
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"]!,
   },
 });
