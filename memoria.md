@@ -488,31 +488,60 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 
 ---
 
-## Próximas Etapas Sugeridas
+## Status do Plano de Implementação (PRD)
 
-### Opção A — Melhorar o Pipeline de IA
-1. Ler `PromptConfig` do banco para montar o prompt do SDR
-2. Incluir histórico das últimas N mensagens no contexto do OpenAI
-3. Implementar tool calling (consulta de estoque, agendamento)
-4. Tratar mensagens de áudio, imagem, documento
+**Documento:** `docs/plans/2026-03-06-moov-chat-implementation-plan.md`
+**PRD:** `docs/plans/2026-03-06-moov-chat-prd.md`
 
-### Opção B — Fazer Inbox e Fila funcionarem em tempo real
-1. `GET /api/[tenantSlug]/conversations` — listar conversas com paginação
-2. `GET /api/[tenantSlug]/conversations/[id]/messages` — buscar mensagens
-3. `POST /api/[tenantSlug]/conversations/[id]/messages` — enviar mensagem manual
-4. Supabase Realtime ou polling para inbox ao vivo
+| Task | Descrição | Status |
+|------|-----------|--------|
+| Task 1 | Scaffold Next.js + docker-compose | ✅ Concluído |
+| Task 2 | Prisma Schema + Migrations + Seed | ✅ Concluído |
+| Task 3 | Autenticação NextAuth v5 + middleware | ✅ Concluído |
+| Task 4 | Layouts Base Admin + Loja | ✅ Concluído |
+| Task 5 | Helpers API + Tipos TypeScript | ✅ Concluído (`api-response.ts`, `evolution.ts`) |
+| Task 6 | Super Admin — CRUD Planos e Lojas | ✅ Concluído (lojas, prompts, plano básico) |
+| Task 7 | Gestão de Usuários da Loja | ✅ Concluído (equipe/novo + equipe/[id]) |
+| Task 8 | Catálogo — Produtos 0km e Usadas | ❌ Não iniciado |
+| Task 9 | WhatsApp Gateway (Webhook) | ✅ Concluído (webhook + process-message) |
+| Task 10 | Leads e Conversas — API Core | ❌ **Próxima tarefa** |
+| Task 11 | Fila de Leads + Inbox (UI com dados reais) | ⚠️ Stubs (sem dados reais, sem polling) |
+| Task 12 | Alertas e Dashboard de Métricas | ❌ Não iniciado |
+| Task 13 | n8n — Flows de Automação (7 flows) | ⚠️ Apenas Flow 1 básico (inbound) |
+| Task 14 | Prompt Configuration (Admin UI completa) | ⚠️ UI básica existe, sem full CRUD |
+| Task 15 | Testes E2E com Playwright | ❌ Não iniciado |
+| Task 16 | Deploy em VPS Hostinger | ❌ Não iniciado |
 
-### Opção C — Deploy em staging (VPS Hostinger)
-1. Configurar VPS com Docker + Caddy (reverse proxy)
-2. Fazer deploy da imagem Next.js (ou configurar CI/CD)
-3. Configurar domínio + HTTPS
-4. Testar fluxo completo com WhatsApp real
+### Divergências entre o Plano e a Implementação Atual
 
-### Opção D — Fluxo de Aprovação de Preços
-1. Lógica de detecção de pedido de desconto pela IA
-2. Criação de `PriceApproval` no banco
-3. Notificação para gerente (WhatsApp ou UI)
-4. Aprovação/rejeição com resposta automática ao lead
+| Item do Plano | Decisão Tomada | Motivo |
+|---------------|---------------|--------|
+| `shadcn/ui` | Usamos `@base-ui/react` | Projeto já existia com @base-ui |
+| URLs `/admin/dashboard` | URLs são `/dashboard`, `/lojas` (sem `/admin/` no path) | Route group `(admin)` não adiciona prefixo na URL |
+| `app/(loja)/layout.tsx` recebe `params.tenantSlug` | Passthrough — slug fica em `[tenantSlug]/layout.tsx` | Params de route group não chegam ao layout pai |
+| n8n processa tudo | Next.js process-message processa diretamente | n8n como tracking/logging; Next.js é o executor principal |
+| `Button` do shadcn/ui | Botões usam classes Tailwind inline em Server Components | `buttonVariants` quebra em Server Components |
+
+### Próxima Tarefa: Task 10 + Task 11
+
+**Task 10 — Leads e Conversas API Core** (criar estes arquivos):
+- `app/api/[tenantSlug]/leads/route.ts` — GET lista paginada + filtro por vendedor
+- `app/api/[tenantSlug]/leads/[id]/route.ts` — GET detalhe + PUT atualizar estado/notas
+- `app/api/[tenantSlug]/leads/[id]/assign/route.ts` — POST atribuir vendedor
+- `app/api/[tenantSlug]/conversations/[id]/route.ts` — GET conversa
+- `app/api/[tenantSlug]/conversations/[id]/takeover/route.ts` — POST assumir atendimento
+- `app/api/[tenantSlug]/conversations/[id]/release/route.ts` — POST devolver para IA
+- `app/api/[tenantSlug]/conversations/[id]/messages/route.ts` — GET mensagens + POST enviar
+
+**Task 11 — Fila de Leads + Inbox (UI real)** (substituir stubs):
+- `app/(loja)/[tenantSlug]/fila/page.tsx` — busca leads reais do banco, separa urgente/IA
+- `components/loja/fila/lead-card.tsx` — card com estado, SLA timer, botão Assumir/Ver
+- `app/(loja)/[tenantSlug]/inbox/[conversationId]/page.tsx` — conversa com dados reais
+- `components/loja/inbox/conversation-view.tsx` — polling 5s + takeover/release + envio
+- `components/loja/inbox/message-input.tsx` — textarea + Enter para enviar
+- `components/loja/inbox/lead-info-panel.tsx` — painel lateral com info do lead
+
+**Atenção:** Adaptar código do plano para usar `@base-ui/react` em vez de `shadcn/ui` onde necessário. No resto, o código do plano pode ser usado quase literalmente.
 
 ---
 
