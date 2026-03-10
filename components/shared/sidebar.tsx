@@ -28,6 +28,7 @@ function getLojaNavItems(slug: string): NavItem[] {
   return [
     { label: 'Fila',       href: `/${slug}/fila`,       icon: List },
     { label: 'Inbox',      href: `/${slug}/inbox`,      icon: MessageSquare },
+    { label: 'Catálogo',   href: `/${slug}/catalogo`,   icon: Bike,        gerenteOnly: true },
     { label: 'Métricas',   href: `/${slug}/metricas`,   icon: BarChart2,   gerenteOnly: true },
     { label: 'Equipe',     href: `/${slug}/equipe`,     icon: Users,       gerenteOnly: true },
     { label: 'Config',     href: `/${slug}/config`,     icon: Settings,    gerenteOnly: true },

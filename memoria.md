@@ -502,10 +502,10 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 | Task 5 | Helpers API + Tipos TypeScript | ✅ Concluído (`api-response.ts`, `evolution.ts`) |
 | Task 6 | Super Admin — CRUD Planos e Lojas | ✅ Concluído (lojas, prompts, plano básico) |
 | Task 7 | Gestão de Usuários da Loja | ✅ Concluído (equipe/novo + equipe/[id]) |
-| Task 8 | Catálogo — Produtos 0km e Usadas | ❌ Não iniciado |
+| Task 8 | Catálogo — Produtos 0km e Usadas | ✅ Concluído (API global-products + UI loja: 0km e usadas) |
 | Task 9 | WhatsApp Gateway (Webhook) | ✅ Concluído (webhook + process-message) |
-| Task 10 | Leads e Conversas — API Core | ❌ **Próxima tarefa** |
-| Task 11 | Fila de Leads + Inbox (UI com dados reais) | ⚠️ Stubs (sem dados reais, sem polling) |
+| Task 10 | Leads e Conversas — API Core | ✅ Concluído (todas as rotas implementadas) |
+| Task 11 | Fila de Leads + Inbox (UI com dados reais) | ✅ Concluído (fila real + inbox com polling) |
 | Task 12 | Alertas e Dashboard de Métricas | ❌ Não iniciado |
 | Task 13 | n8n — Flows de Automação (7 flows) | ⚠️ Apenas Flow 1 básico (inbound) |
 | Task 14 | Prompt Configuration (Admin UI completa) | ⚠️ UI básica existe, sem full CRUD |
@@ -522,26 +522,14 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 | n8n processa tudo | Next.js process-message processa diretamente | n8n como tracking/logging; Next.js é o executor principal |
 | `Button` do shadcn/ui | Botões usam classes Tailwind inline em Server Components | `buttonVariants` quebra em Server Components |
 
-### Próxima Tarefa: Task 10 + Task 11
+### Próxima Tarefa: Task 12 ou Task 13
 
-**Task 10 — Leads e Conversas API Core** (criar estes arquivos):
-- `app/api/[tenantSlug]/leads/route.ts` — GET lista paginada + filtro por vendedor
-- `app/api/[tenantSlug]/leads/[id]/route.ts` — GET detalhe + PUT atualizar estado/notas
-- `app/api/[tenantSlug]/leads/[id]/assign/route.ts` — POST atribuir vendedor
-- `app/api/[tenantSlug]/conversations/[id]/route.ts` — GET conversa
-- `app/api/[tenantSlug]/conversations/[id]/takeover/route.ts` — POST assumir atendimento
-- `app/api/[tenantSlug]/conversations/[id]/release/route.ts` — POST devolver para IA
-- `app/api/[tenantSlug]/conversations/[id]/messages/route.ts` — GET mensagens + POST enviar
+Task 8 concluída em 2026-03-10 — API global-products + UI catálogo loja (0km e usadas).
 
-**Task 11 — Fila de Leads + Inbox (UI real)** (substituir stubs):
-- `app/(loja)/[tenantSlug]/fila/page.tsx` — busca leads reais do banco, separa urgente/IA
-- `components/loja/fila/lead-card.tsx` — card com estado, SLA timer, botão Assumir/Ver
-- `app/(loja)/[tenantSlug]/inbox/[conversationId]/page.tsx` — conversa com dados reais
-- `components/loja/inbox/conversation-view.tsx` — polling 5s + takeover/release + envio
-- `components/loja/inbox/message-input.tsx` — textarea + Enter para enviar
-- `components/loja/inbox/lead-info-panel.tsx` — painel lateral com info do lead
-
-**Atenção:** Adaptar código do plano para usar `@base-ui/react` em vez de `shadcn/ui` onde necessário. No resto, o código do plano pode ser usado quase literalmente.
+**Próximas opções (por prioridade MVP):**
+- **Task 13** — n8n Flows (Handoff+Resumo IA, SLA Alerts, Follow-up, Relatório Diário)
+- **Task 12** — Dashboard de Métricas (dados reais)
+- **Task 14** — Prompt Config completa (UI admin por loja)
 
 ---
 
@@ -584,6 +572,9 @@ app/
       equipe/[id]/page.tsx
       config/page.tsx                 ← Sem sonner, usa saveStatus state
       aprovacoes/page.tsx
+      catalogo/page.tsx               ← Catálogo loja: tabs 0km + usadas, dialogs add/edit
+  (admin)/
+    catalogo/page.tsx                 ← Catálogo global admin (GlobalProduct0km CRUD)
   api/
     webhooks/
       whatsapp/[tenantSlug]/route.ts  ← Webhook Evolution API → processa + encaminha n8n
@@ -593,6 +584,8 @@ app/
       tenants/route.ts                ← GET retorna paginação { data: { data:[],total } }
       prompts/route.ts
       prompts/[id]/route.ts
+      global-products/route.ts        ← GET/POST GlobalProduct0km (SUPER_ADMIN)
+      global-products/[id]/route.ts   ← PUT GlobalProduct0km
     [tenantSlug]/
       config/route.ts                 ← GET + PATCH config do tenant
       users/route.ts
