@@ -56,7 +56,13 @@ export default async function LojasPage() {
                     {t.status}
                   </Badge>
                 </td>
-                <td className="p-4 text-right">
+                <td className="p-4 text-right flex items-center justify-end gap-2">
+                  <Link
+                    href={`/${t.slug}/fila`}
+                    className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    Abrir Loja
+                  </Link>
                   <Link
                     href={`/lojas/${t.id}`}
                     className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

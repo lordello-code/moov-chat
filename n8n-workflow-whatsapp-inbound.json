@@ -1,0 +1,49 @@
+{
+  "id": "moov-whatsapp-inbound",
+  "name": "MOOV Chat - WhatsApp Inbound",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-inbound",
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4444-aaaa-000000000001",
+      "name": "Webhook WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "whatsapp-inbound-moov"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Forward the webhook payload to Next.js internal API\nconst webhookData = $input.all()[0].json;\n\ntry {\n  const response = await fetch('http://host.docker.internal:3000/api/webhooks/internal/process-message', {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'X-Internal-Secret': 'moovchat-internal-secret-123'\n    },\n    body: JSON.stringify(webhookData)\n  });\n\n  const result = await response.json();\n  return [{ json: { status: response.status, ...result } }];\n} catch (error) {\n  return [{ json: { error: error.message } }];\n}"
+      },
+      "id": "a1b2c3d4-2222-4444-aaaa-000000000002",
+      "name": "Processar Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Webhook WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Processar Mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0
+}

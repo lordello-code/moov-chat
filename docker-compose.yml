@@ -1,15 +1,9 @@
-# docker-compose.yml — VPS Hostinger
-# App Next.js: Supabase (externo, não está aqui)
-# n8n: SQLite local na VPS (padrão, sem banco externo)
-# Evolution API: banco SQLite ou Redis local
-version: '3.8'
-
 services:
   n8n:
     image: n8nio/n8n:latest
+    container_name: moov-n8n
     restart: unless-stopped
     environment:
-      # SQLite (padrão) — sem banco externo necessário na VPS
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - WEBHOOK_URL=${N8N_WEBHOOK_URL}
       - N8N_API_KEY=${N8N_API_KEY}
@@ -20,13 +14,23 @@ services:
       - n8n_data:/home/node/.n8n
 
   evolution:
-    image: atendai/evolution-api:latest
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: moov-evolution
     restart: unless-stopped
     environment:
       - SERVER_URL=${EVOLUTION_API_URL}
+      - SERVER_PORT=8080
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_GLOBAL_TOKEN}
-      - DATABASE_ENABLED=false
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=${DIRECT_URL}?schema=evolution
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_MESSAGE_UPDATE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      - LOG_LEVEL=WARN
     ports:
       - "8080:8080"
     volumes:

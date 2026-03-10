@@ -46,7 +46,8 @@ export default function PromptsPage() {
 
   useEffect(() => {
     fetch('/api/admin/prompts').then(r => r.json()).then(d => setPrompts(d.data ?? []))
-    fetch('/api/admin/tenants').then(r => r.json()).then(d => setTenants(d.data ?? []))
+    // /api/admin/tenants retorna paginação: { data: { data: [...], total, ... } }
+    fetch('/api/admin/tenants').then(r => r.json()).then(d => setTenants(d.data?.data ?? []))
   }, [])
 
   function loadPrompt(p: Prompt) {
@@ -164,7 +165,7 @@ export default function PromptsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Loja (tenant)</Label>
-              <Select value={tenantId} onValueChange={setTenantId}>
+              <Select value={tenantId} onValueChange={(v) => setTenantId(v ?? '')}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar loja" />
                 </SelectTrigger>
@@ -179,7 +180,7 @@ export default function PromptsPage() {
 
             <div className="space-y-1">
               <Label>Tipo de Agente</Label>
-              <Select value={agentType} onValueChange={setAgentType}>
+              <Select value={agentType} onValueChange={(v) => setAgentType(v ?? '')}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

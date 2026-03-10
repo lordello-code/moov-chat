@@ -3,14 +3,14 @@
   "configurations": [
     {
       "name": "Next.js (MOOV Chat)",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "npm run dev"],
       "port": 3000
     },
     {
       "name": "n8n (Automation Engine)",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["n8n"],
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "npx n8n"],
       "port": 5678
     }
   ]
