@@ -1,7 +1,7 @@
 # MOOV Chat — Memória do Projeto
 
 > Arquivo mantido pelo Claude para preservar contexto entre sessões.
-> Atualizado em: 2026-03-10
+> Atualizado em: 2026-03-10 — Plano de Validação Local 100% concluído. Commit: `afab339`
 
 ---
 
@@ -35,7 +35,7 @@
 | 6 | Conectar WhatsApp via Evolution API | ✅ Concluído |
 | 7 | Construir flows n8n | ✅ Concluído |
 | 8 | Teste end-to-end | ✅ Concluído |
-| 9 | Commit final de validação | ⏳ Pendente |
+| 9 | Commit final de validação | ✅ Concluído |
 
 ---
 
@@ -88,6 +88,10 @@ npx prisma db seed          # criou dados iniciais
 - **Causa:** `import { toast } from 'sonner'` em Client Component sem `<Toaster />` no root layout pode causar erro durante SSR/pré-render
 - **Fix 1:** Adicionado `<Toaster richColors position="top-right" />` ao `app/layout.tsx`
 - **Fix 2:** Removido `toast from 'sonner'` de `config/page.tsx` — substituído por estado `saveStatus: 'idle' | 'success' | 'error'` com feedback inline
+
+#### Bug 4 — TypeScript: `Select.onValueChange` não aceita `Dispatch<SetStateAction<string>>`
+- **Causa:** `@base-ui/react` Select passa `value: string | null` mas `setState` não aceita `null`
+- **Fix:** Wrap com handler inline: `onValueChange={(v) => setState(v ?? '')}` em `prompts/page.tsx`
 
 #### Outros fixes
 - `app/(admin)/lojas/page.tsx`: adicionado botão "Abrir Loja" → `/{slug}/fila`
@@ -418,6 +422,97 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 ### buttonVariants em Server Components
 - `buttonVariants` de `@/components/ui/button` NÃO pode ser importado em Server Components (causa crash)
 - Substituir por classes Tailwind inline: `"inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground..."`
+
+### @base-ui/react Select — onValueChange
+- Assinatura real: `(value: string | null, eventDetails) => void`
+- Nunca passar `setState` diretamente — sempre usar wrapper: `(v) => setState(v ?? '')`
+
+### Mapeamento Prisma ↔ Banco (snake_case)
+- Modelos Prisma (PascalCase) mapeiam para tabelas snake_case via `@@map`
+- Ex.: `Lead` → `leads`, `Conversation` → `conversations`, `Message` → `messages`
+- Campos também mapeados: `contentText` (DB) = `content` (Prisma), `status` (DB) = `sentStatus` (Prisma)
+- Ao fazer queries raw (pg, psql), usar nomes snake_case do banco
+
+---
+
+## Histórico de Commits
+
+| Hash | Mensagem |
+|------|----------|
+| `afab339` | feat: validação local completa — pipeline WhatsApp + IA + UI loja |
+| `b8675a3` | debug: adicionar logging + try/catch no POST /api/admin/tenants |
+| `a00ba3d` | fix: nova loja — select de planos + try/catch na API |
+| `c3b2d05` | fix: remover buttonVariants de Server Components + corrigir hrefs |
+| `325be86` | fix: mover nav items com ícones para dentro do Sidebar |
+| `49e7bdb` | fix: corrigir rotas admin — route group não adiciona /admin à URL |
+| `19a2525` | fix: migrations usam DIRECT_URL (porta 5432) |
+| `4779a77` + `1dca41f` | fix/chore: Prisma 7 adapter + schema.prisma Supabase |
+| `90d9c1d` | docs: plano de validação local |
+
+---
+
+## Estado Atual do Projeto (2026-03-10)
+
+**Branch:** `main` | **Commit HEAD:** `afab339`
+
+### O que está funcionando
+
+| Funcionalidade | Status |
+|----------------|--------|
+| Login/auth (SUPER_ADMIN + loja) | ✅ |
+| Admin: Lojas (listar, criar, detalhar) | ✅ |
+| Admin: Prompts (listar, criar, editar) | ✅ |
+| Loja: Sidebar + navegação | ✅ |
+| Loja: Fila (visualização) | ✅ stub |
+| Loja: Inbox (lista conversas + visualizar) | ✅ stub |
+| Loja: Equipe (listar, criar, editar membro) | ✅ |
+| Loja: Config (toneOfVoice, horários, Evolution) | ✅ |
+| Loja: Aprovações | ✅ stub |
+| Webhook Evolution API → Next.js | ✅ |
+| Pipeline WhatsApp → IA → resposta automática | ✅ |
+| n8n workflow (tracking/logging) | ✅ importado e ativo |
+| WhatsApp conectado (`moov-teste`) | ✅ estado `open` |
+
+### Limitações conhecidas / Pendente para próxima fase
+
+| Item | Descrição |
+|------|-----------|
+| Fila em tempo real | Página stub — não busca dados reais do banco |
+| Inbox em tempo real | Lista estática — precisa integrar com DB e WebSocket |
+| Pipeline IA simplificado | Sem histórico de conversa, sem tool calling |
+| Prompt SDR hardcoded | Deveria ler do banco (`PromptConfig`) |
+| Aprovações de preço | Stub — lógica não implementada |
+| Métricas | Stub — sem cálculos reais |
+| Deploy produção | Apenas local — não há ambiente staging/prod |
+| Multi-tenant isolamento | Webhook valida tenant pelo slug, mas não verifica token por instância |
+
+---
+
+## Próximas Etapas Sugeridas
+
+### Opção A — Melhorar o Pipeline de IA
+1. Ler `PromptConfig` do banco para montar o prompt do SDR
+2. Incluir histórico das últimas N mensagens no contexto do OpenAI
+3. Implementar tool calling (consulta de estoque, agendamento)
+4. Tratar mensagens de áudio, imagem, documento
+
+### Opção B — Fazer Inbox e Fila funcionarem em tempo real
+1. `GET /api/[tenantSlug]/conversations` — listar conversas com paginação
+2. `GET /api/[tenantSlug]/conversations/[id]/messages` — buscar mensagens
+3. `POST /api/[tenantSlug]/conversations/[id]/messages` — enviar mensagem manual
+4. Supabase Realtime ou polling para inbox ao vivo
+
+### Opção C — Deploy em staging (VPS Hostinger)
+1. Configurar VPS com Docker + Caddy (reverse proxy)
+2. Fazer deploy da imagem Next.js (ou configurar CI/CD)
+3. Configurar domínio + HTTPS
+4. Testar fluxo completo com WhatsApp real
+
+### Opção D — Fluxo de Aprovação de Preços
+1. Lógica de detecção de pedido de desconto pela IA
+2. Criação de `PriceApproval` no banco
+3. Notificação para gerente (WhatsApp ou UI)
+4. Aprovação/rejeição com resposta automática ao lead
 
 ---
 
