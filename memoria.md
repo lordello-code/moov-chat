@@ -1,7 +1,7 @@
 # MOOV Chat — Memória do Projeto
 
 > Arquivo mantido pelo Claude para preservar contexto entre sessões.
-> Atualizado em: 2026-03-10 — Plano de Validação Local 100% concluído. Commit: `afab339`
+> Atualizado em: 2026-03-10 — Task 14 (Prompt Config Completa) concluída. Commit HEAD: `2aee394`
 
 ---
 
@@ -439,6 +439,14 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 
 | Hash | Mensagem |
 |------|----------|
+| `2aee394` | feat: process-message usa briefing.meta no system prompt (contexto rico) |
+| `1bc0c56` | feat: loja config — briefing guiado de IA (sobre a loja, políticas, campanhas, tom) |
+| `8e0f8af` | feat: config PATCH aceita meta do briefing guiado |
+| `fd97036` | feat: admin prompts — preview dialog + toggle histórico de versões |
+| `e936c3a` | feat: PATCH /api/admin/prompts/[id] aceita reactivate — swap de versão ativa |
+| `f7610bf` | feat: GET /api/admin/prompts aceita ?showAll=true |
+| `fd692ba` | feat: briefing.meta Json field — suporte a briefing guiado |
+| `d04aed1` | feat: catálogo loja — UI 0km e usadas com dialogs |
 | `afab339` | feat: validação local completa — pipeline WhatsApp + IA + UI loja |
 | `b8675a3` | debug: adicionar logging + try/catch no POST /api/admin/tenants |
 | `a00ba3d` | fix: nova loja — select de planos + try/catch na API |
@@ -453,7 +461,7 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 
 ## Estado Atual do Projeto (2026-03-10)
 
-**Branch:** `main` | **Commit HEAD:** `afab339`
+**Branch:** `main` | **Commit HEAD:** `2aee394`
 
 ### O que está funcionando
 
@@ -461,12 +469,13 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 |----------------|--------|
 | Login/auth (SUPER_ADMIN + loja) | ✅ |
 | Admin: Lojas (listar, criar, detalhar) | ✅ |
-| Admin: Prompts (listar, criar, editar) | ✅ |
+| Admin: Prompts (listar, criar, preview, histórico, reativar) | ✅ |
 | Loja: Sidebar + navegação | ✅ |
 | Loja: Fila (visualização) | ✅ stub |
 | Loja: Inbox (lista conversas + visualizar) | ✅ stub |
 | Loja: Equipe (listar, criar, editar membro) | ✅ |
-| Loja: Config (toneOfVoice, horários, Evolution) | ✅ |
+| Loja: Config (toneOfVoice, horários, Evolution, briefing guiado IA) | ✅ |
+| Loja: Métricas (KPIs, funil, equipe) | ✅ |
 | Loja: Aprovações | ✅ stub |
 | Webhook Evolution API → Next.js | ✅ |
 | Pipeline WhatsApp → IA → resposta automática | ✅ |
@@ -480,7 +489,7 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 | Fila em tempo real | Página stub — não busca dados reais do banco |
 | Inbox em tempo real | Lista estática — precisa integrar com DB e WebSocket |
 | Pipeline IA simplificado | Sem histórico de conversa, sem tool calling |
-| Prompt SDR hardcoded | Deveria ler do banco (`PromptConfig`) |
+| Prompt SDR hardcoded | Sistema de PromptConfig existe no banco — pipeline usa DEFAULT_SDR_PROMPT + briefing.meta |
 | Aprovações de preço | Stub — lógica não implementada |
 | Métricas | Stub — sem cálculos reais |
 | Deploy produção | Apenas local — não há ambiente staging/prod |
@@ -506,9 +515,9 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 | Task 9 | WhatsApp Gateway (Webhook) | ✅ Concluído (webhook + process-message) |
 | Task 10 | Leads e Conversas — API Core | ✅ Concluído (todas as rotas implementadas) |
 | Task 11 | Fila de Leads + Inbox (UI com dados reais) | ✅ Concluído (fila real + inbox com polling) |
-| Task 12 | Alertas e Dashboard de Métricas | ❌ Não iniciado |
+| Task 12 | Alertas e Dashboard de Métricas | ✅ Concluído (metricas/page.tsx com KPIs + funil) |
 | Task 13 | n8n — Flows de Automação (7 flows) | ⚠️ Apenas Flow 1 básico (inbound) |
-| Task 14 | Prompt Configuration (Admin UI completa) | ⚠️ UI básica existe, sem full CRUD |
+| Task 14 | Prompt Configuration (Admin UI completa) | ✅ Concluído (preview, histórico, briefing guiado) |
 | Task 15 | Testes E2E com Playwright | ❌ Não iniciado |
 | Task 16 | Deploy em VPS Hostinger | ❌ Não iniciado |
 
@@ -522,14 +531,60 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 | n8n processa tudo | Next.js process-message processa diretamente | n8n como tracking/logging; Next.js é o executor principal |
 | `Button` do shadcn/ui | Botões usam classes Tailwind inline em Server Components | `buttonVariants` quebra em Server Components |
 
-### Próxima Tarefa: Task 12 ou Task 13
+### Próxima Tarefa: Task 13 ou Task 15
 
-Task 8 concluída em 2026-03-10 — API global-products + UI catálogo loja (0km e usadas).
+Task 14 concluída em 2026-03-10 — Prompt Config Completa com preview, histórico de versões e briefing guiado de IA.
 
 **Próximas opções (por prioridade MVP):**
-- **Task 13** — n8n Flows (Handoff+Resumo IA, SLA Alerts, Follow-up, Relatório Diário)
-- **Task 12** — Dashboard de Métricas (dados reais)
-- **Task 14** — Prompt Config completa (UI admin por loja)
+- **Task 13** — n8n Flows restantes (Handoff+Resumo IA, SLA Alerts, Follow-up, Relatório Diário)
+- **Task 15** — Testes E2E com Playwright
+- **Task 16** — Deploy em VPS Hostinger
+
+---
+
+## Task 14 — Prompt Config Completa ✅
+
+**Concluída em:** 2026-03-10 | **Commits:** `fd692ba` → `2aee394`
+
+### O que foi implementado
+
+#### 1. Admin — Preview do Prompt Montado
+- Botão **"👁 Preview"** em `app/(admin)/prompts/page.tsx` (visível ao editar ou selecionar um prompt)
+- Abre modal com o texto final montado client-side: `promptBase + blocos não-vazios`
+- Badge com contagem de caracteres e tokens estimados (`Math.ceil(chars / 4)`)
+- Função `assemblePrompt()` com headers `=== Contexto da Loja ===`, `=== Políticas Comerciais ===`, etc.
+
+#### 2. Admin — Histórico de Versões com Reativação
+- Toggle **"Histórico"** no topo da lista de prompts → GET com `?showAll=true`
+- Versões inativas: badge "Inativo" (cinza) + botão **"Reativar"**
+- Reativar: `PATCH /api/admin/prompts/[id]` com `{ reactivate: true }`
+  - Desativa todos os ativos do mesmo (tenantId, agentType) via `updateMany`
+  - Ativa o prompt solicitado via `update`
+
+#### 3. Loja Config — Briefing Guiado de IA
+Nova seção em `app/(loja)/[tenantSlug]/config/page.tsx` com 5 cards:
+
+| Card | Campos |
+|------|--------|
+| 🏪 Sobre a Loja | cidade, marcas, foco (select), diferencial |
+| 📋 Políticas Comerciais | formasPagamento (checkbox pills), aceitaTroca (radio), condicaoTroca (condicional), prazoEntrega |
+| 📣 Campanhas Ativas | currentCampaigns, validadeCampanha (date) |
+| 🎙 Tom de Voz | toneOfVoice (radio pills), nomeAtendente |
+
+Dados salvos em `briefing.meta` (JSON) via `PATCH /api/[slug]/config`.
+
+#### 4. process-message — Contexto Rico no System Prompt
+Função `buildBriefingContext()` em `process-message/route.ts`:
+- Lê `briefing.meta` do tenant
+- Monta texto estruturado com blocos: `SOBRE A LOJA`, `POLÍTICAS COMERCIAIS`, `CAMPANHAS ATIVAS`, `TOM DE VOZ`
+- Anexa ao system prompt sob `--- INFORMAÇÕES DA LOJA ---`
+- Graceful: retorna `''` se briefing for null ou sem dados preenchidos
+
+### Notas técnicas
+
+- **Migration:** `briefing.meta Json?` adicionado via `prisma db push` + `prisma migrate resolve --applied` (projeto sem histórico de migrations anterior)
+- **Merge strategy:** `PATCH /api/[slug]/config` faz spread de meta existente + novos campos (não sobrescreve campos não enviados)
+- **Zero breaking changes:** Todos os campos do briefing antigos (`brands`, `currentCampaigns`, `additionalPolicies`) continuam funcionando
 
 ---
 
@@ -558,7 +613,7 @@ app/
     lojas/page.tsx                    ← Lista lojas + botão "Abrir Loja"
     lojas/nova/page.tsx
     lojas/[id]/page.tsx
-    prompts/page.tsx                  ← Usa toast (funciona com Toaster no root)
+    prompts/page.tsx                  ← Preview dialog + toggle histórico + reativar versão
   (loja)/
     layout.tsx                        ← Passthrough simples
     [tenantSlug]/
@@ -570,7 +625,7 @@ app/
       equipe/page.tsx
       equipe/novo/page.tsx
       equipe/[id]/page.tsx
-      config/page.tsx                 ← Sem sonner, usa saveStatus state
+      config/page.tsx                 ← Briefing guiado de IA (5 cards: loja, políticas, campanhas, tom)
       aprovacoes/page.tsx
       catalogo/page.tsx               ← Catálogo loja: tabs 0km + usadas, dialogs add/edit
   (admin)/
@@ -579,11 +634,11 @@ app/
     webhooks/
       whatsapp/[tenantSlug]/route.ts  ← Webhook Evolution API → processa + encaminha n8n
       internal/
-        process-message/route.ts      ← Pipeline completo: Lead → Conversa → IA → Envio
+        process-message/route.ts      ← Pipeline: Lead → Conversa → IA (briefing.meta no system prompt) → Envio
     admin/
       tenants/route.ts                ← GET retorna paginação { data: { data:[],total } }
-      prompts/route.ts
-      prompts/[id]/route.ts
+      prompts/route.ts                ← GET aceita ?showAll=true; POST cria nova versão
+      prompts/[id]/route.ts           ← DELETE (desativa) + PATCH (reactivate: true = swap versão)
       global-products/route.ts        ← GET/POST GlobalProduct0km (SUPER_ADMIN)
       global-products/[id]/route.ts   ← PUT GlobalProduct0km
     [tenantSlug]/
