@@ -23,6 +23,62 @@ Regras:
 - Se o cliente demonstrar urgencia ou interesse forte, sinalize que vai conectar com um vendedor
 - Responda sempre em portugues brasileiro`
 
+// ─── Monta contexto rico da loja a partir do briefing ────────────────────────
+function buildBriefingContext(
+  briefing: {
+    brands: string[]
+    currentCampaigns: string | null
+    additionalPolicies: string | null
+    meta: unknown
+  } | null,
+  toneOfVoice: string | null,
+): string {
+  if (!briefing) return ''
+
+  const meta = (briefing.meta ?? {}) as Record<string, unknown>
+  const parts: string[] = []
+
+  // Bloco: Sobre a loja
+  const lojaLines = [
+    meta.cidade       && `Cidade/Bairro: ${meta.cidade}`,
+    meta.marcas       && `Marcas: ${meta.marcas}`,
+    meta.foco         && `Segmento: ${meta.foco}`,
+    meta.diferencial  && `Diferencial: ${meta.diferencial}`,
+  ].filter(Boolean)
+  if (lojaLines.length) parts.push(`SOBRE A LOJA:\n${lojaLines.join('\n')}`)
+
+  // Bloco: Políticas comerciais
+  const politicasLines: string[] = []
+  if (Array.isArray(meta.formasPagamento) && (meta.formasPagamento as string[]).length) {
+    politicasLines.push(`Pagamento aceito: ${(meta.formasPagamento as string[]).join(', ')}`)
+  }
+  if (meta.aceitaTroca === true) {
+    politicasLines.push(`Aceita troca: Sim${meta.condicaoTroca ? ` — ${meta.condicaoTroca}` : ''}`)
+  } else if (meta.aceitaTroca === false) {
+    politicasLines.push('Aceita troca: Não')
+  }
+  if (meta.prazoEntrega)           politicasLines.push(`Prazo entrega 0km: ${meta.prazoEntrega}`)
+  if (briefing.additionalPolicies) politicasLines.push(briefing.additionalPolicies)
+  if (politicasLines.length) parts.push(`POLÍTICAS COMERCIAIS:\n${politicasLines.join('\n')}`)
+
+  // Bloco: Campanhas ativas
+  const campanhasLines = [
+    briefing.currentCampaigns || meta.currentCampaigns,
+    meta.validadeCampanha && `Válida até: ${meta.validadeCampanha}`,
+  ].filter(Boolean)
+  if (campanhasLines.length) parts.push(`CAMPANHAS ATIVAS:\n${campanhasLines.join('\n')}`)
+
+  // Bloco: Tom de voz
+  const tomLines = [
+    toneOfVoice        && `Tom de voz: ${toneOfVoice}`,
+    meta.nomeAtendente && `Nome do atendente: ${meta.nomeAtendente}`,
+  ].filter(Boolean)
+  if (tomLines.length) parts.push(`TOM DE VOZ:\n${tomLines.join('\n')}`)
+
+  if (!parts.length) return ''
+  return `\n\n--- INFORMAÇÕES DA LOJA ---\n${parts.join('\n\n')}`
+}
+
 export async function POST(req: NextRequest) {
   // Validate internal secret
   const secret = req.headers.get('x-internal-secret')
@@ -166,9 +222,11 @@ export async function POST(req: NextRequest) {
     })
 
     // Build OpenAI messages
+    const briefingContext = buildBriefingContext(tenant.briefing, tenant.toneOfVoice)
     const systemPrompt = DEFAULT_SDR_PROMPT
       .replace('{storeName}', tenant.name)
       .replace('{toneOfVoice}', tenant.toneOfVoice || 'Amigavel, profissional e prestativo')
+      + briefingContext
 
     const openaiMessages: { role: string; content: string }[] = [
       { role: 'system', content: systemPrompt },
