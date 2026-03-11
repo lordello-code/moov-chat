@@ -439,7 +439,7 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 
 | Hash | Mensagem |
 |------|----------|
-| (novo) | fix: middleware retorna 401 para API routes não autenticadas |
+| `a203326` | fix: middleware retorna 401 para API routes não autenticadas |
 | `80a305b` | fix: code review Task 14 — 7 issues corrigidos (transaction, allowlist, dead code, duplicate) |
 | `3ded23f` | docs: memoria.md — Task 14 concluída (Prompt Config Completa) |
 | `2aee394` | feat: process-message usa briefing.meta no system prompt (contexto rico) |
@@ -464,7 +464,7 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 
 ## Estado Atual do Projeto (2026-03-11)
 
-**Branch:** `main` | **Commit HEAD:** (a ser gerado — Tasks 15+16 completas)
+**Branch:** `main` | **Commit HEAD:** `a203326`
 
 ### O que está funcionando
 
