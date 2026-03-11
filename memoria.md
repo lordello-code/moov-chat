@@ -1,7 +1,7 @@
 # MOOV Chat — Memória do Projeto
 
 > Arquivo mantido pelo Claude para preservar contexto entre sessões.
-> Atualizado em: 2026-03-10 — Task 14 (Prompt Config Completa) concluída. Commit HEAD: `2aee394`
+> Atualizado em: 2026-03-10 — Task 14 concluída + code review aplicado. Commit HEAD: `80a305b`
 
 ---
 
@@ -439,6 +439,8 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 
 | Hash | Mensagem |
 |------|----------|
+| `80a305b` | fix: code review Task 14 — 7 issues corrigidos (transaction, allowlist, dead code, duplicate) |
+| `3ded23f` | docs: memoria.md — Task 14 concluída (Prompt Config Completa) |
 | `2aee394` | feat: process-message usa briefing.meta no system prompt (contexto rico) |
 | `1bc0c56` | feat: loja config — briefing guiado de IA (sobre a loja, políticas, campanhas, tom) |
 | `8e0f8af` | feat: config PATCH aceita meta do briefing guiado |
@@ -461,7 +463,7 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 
 ## Estado Atual do Projeto (2026-03-10)
 
-**Branch:** `main` | **Commit HEAD:** `2aee394`
+**Branch:** `main` | **Commit HEAD:** `80a305b`
 
 ### O que está funcionando
 
