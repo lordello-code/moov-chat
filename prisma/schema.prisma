@@ -241,6 +241,7 @@ model Briefing {
   brands             String[]
   currentCampaigns   String?   @db.Text
   additionalPolicies String?   @db.Text
+  meta               Json?
   completedAt        DateTime?
   validatedAt        DateTime?
   validatedById      String?
