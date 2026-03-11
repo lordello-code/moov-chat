@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { ok, err, forbidden } from '@/lib/api-response'
 import bcrypt from 'bcryptjs'
+import { TenantStatus } from '@prisma/client'
 
 export async function GET(req: Request) {
   const session = await auth()
@@ -11,7 +12,7 @@ export async function GET(req: Request) {
   const page     = Number(searchParams.get('page') ?? 1)
   const pageSize = Number(searchParams.get('pageSize') ?? 20)
   const search   = searchParams.get('search') ?? ''
-  const status   = searchParams.get('status') as any
+  const status   = searchParams.get('status') as TenantStatus | null
 
   const where = {
     ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
@@ -55,8 +56,9 @@ export async function POST(req: Request) {
     const plan = await prisma.plan.findUnique({ where: { id: planId } })
     console.log('[POST /api/admin/tenants] plan encontrado:', plan?.name ?? 'NÃO ENCONTRADO')
     if (!plan) return err(`Plano não encontrado: ${planId}`, 'PLAN_NOT_FOUND', 404)
-  } catch (e: any) {
-    return err('Erro ao buscar plano: ' + e.message, 'DB_ERROR', 500)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return err('Erro ao buscar plano: ' + msg, 'DB_ERROR', 500)
   }
 
   const existing = await prisma.tenant.findUnique({ where: { slug } })
@@ -84,8 +86,9 @@ export async function POST(req: Request) {
   })
 
   return ok(tenant, 201)
-  } catch (e: any) {
-    console.error('[POST /api/admin/tenants] Erro:', e.message)
-    return err(e?.message ?? 'Erro interno ao criar loja', 'INTERNAL_ERROR', 500)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Erro interno ao criar loja'
+    console.error('[POST /api/admin/tenants] Erro:', msg)
+    return err(msg, 'INTERNAL_ERROR', 500)
   }
 }
