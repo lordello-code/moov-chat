@@ -148,9 +148,9 @@ export default function PromptsPage() {
   }
 
   async function handleDeactivate(id: string) {
-    await fetch(`/api/admin/prompts/${id}`, { method: 'DELETE' })
-    toast.success('Prompt desativado')
-    fetchPrompts()
+    const res = await fetch(`/api/admin/prompts/${id}`, { method: 'DELETE' })
+    if (res.ok) { toast.success('Prompt desativado'); fetchPrompts() }
+    else toast.error('Erro ao desativar')
   }
 
   async function handleReactivate(id: string) {

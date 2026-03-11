@@ -31,7 +31,6 @@ function buildBriefingContext(
     additionalPolicies: string | null
     meta: unknown
   } | null,
-  toneOfVoice: string | null,
 ): string {
   if (!briefing) return ''
 
@@ -63,17 +62,15 @@ function buildBriefingContext(
 
   // Bloco: Campanhas ativas
   const campanhasLines = [
-    briefing.currentCampaigns || meta.currentCampaigns,
+    briefing.currentCampaigns,                                           // coluna direta do Briefing
     meta.validadeCampanha && `Válida até: ${meta.validadeCampanha}`,
   ].filter(Boolean)
   if (campanhasLines.length) parts.push(`CAMPANHAS ATIVAS:\n${campanhasLines.join('\n')}`)
 
-  // Bloco: Tom de voz
-  const tomLines = [
-    toneOfVoice        && `Tom de voz: ${toneOfVoice}`,
-    meta.nomeAtendente && `Nome do atendente: ${meta.nomeAtendente}`,
-  ].filter(Boolean)
-  if (tomLines.length) parts.push(`TOM DE VOZ:\n${tomLines.join('\n')}`)
+  // Bloco: Tom de voz (apenas nomeAtendente — toneOfVoice já está no DEFAULT_SDR_PROMPT)
+  if (meta.nomeAtendente) {
+    parts.push(`TOM DE VOZ:\nNome do atendente: ${meta.nomeAtendente}`)
+  }
 
   if (!parts.length) return ''
   return `\n\n--- INFORMAÇÕES DA LOJA ---\n${parts.join('\n\n')}`
@@ -222,7 +219,7 @@ export async function POST(req: NextRequest) {
     })
 
     // Build OpenAI messages
-    const briefingContext = buildBriefingContext(tenant.briefing, tenant.toneOfVoice)
+    const briefingContext = buildBriefingContext(tenant.briefing)
     const systemPrompt = DEFAULT_SDR_PROMPT
       .replace('{storeName}', tenant.name)
       .replace('{toneOfVoice}', tenant.toneOfVoice || 'Amigavel, profissional e prestativo')

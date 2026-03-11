@@ -33,6 +33,7 @@ type Form = {
   businessHoursEnd: string
   evolutionInstanceName: string
   currentCampaigns: string
+  additionalPolicies: string
   cidade: string; marcas: string; foco: string; diferencial: string
   formasPagamento: string[]; aceitaTroca: boolean
   condicaoTroca: string; prazoEntrega: string
@@ -41,10 +42,17 @@ type Form = {
 
 const DEFAULT: Form = {
   toneOfVoice: '', businessHoursStart: '', businessHoursEnd: '',
-  evolutionInstanceName: '', currentCampaigns: '',
+  evolutionInstanceName: '', currentCampaigns: '', additionalPolicies: '',
   cidade: '', marcas: '', foco: 'ambos', diferencial: '',
   formasPagamento: [], aceitaTroca: false, condicaoTroca: '',
   prazoEntrega: '', validadeCampanha: '', nomeAtendente: '',
+}
+
+// Coerce valores legados de toneOfVoice para um dos presets (mantém compatibilidade)
+const PRESET_TONES = TOM_OPTIONS.map(o => o.value)
+function coerceTone(t: string | undefined | null): string {
+  if (!t) return 'Amigável'
+  return PRESET_TONES.includes(t) ? t : 'Amigável'
 }
 
 export default function ConfigPage() {
@@ -61,11 +69,12 @@ export default function ConfigPage() {
         if (!d.data) return
         const meta: Meta = (d.data.briefing?.meta ?? {}) as Meta
         setForm({
-          toneOfVoice:           d.data.toneOfVoice           ?? '',
+          toneOfVoice:           coerceTone(d.data.toneOfVoice),
           businessHoursStart:    d.data.businessHoursStart    ?? '',
           businessHoursEnd:      d.data.businessHoursEnd      ?? '',
           evolutionInstanceName: d.data.evolutionInstanceName ?? '',
-          currentCampaigns:      d.data.briefing?.currentCampaigns ?? '',
+          currentCampaigns:      d.data.briefing?.currentCampaigns  ?? '',
+          additionalPolicies:    d.data.briefing?.additionalPolicies ?? '',
           cidade:           meta.cidade           ?? '',
           marcas:           meta.marcas           ?? '',
           foco:             meta.foco             ?? 'ambos',
@@ -237,6 +246,13 @@ export default function ConfigPage() {
               </Label>
               <Input value={form.prazoEntrega} onChange={set('prazoEntrega')}
                 placeholder="Ex: até 7 dias úteis, entrega imediata, sob encomenda..." />
+            </div>
+            <div>
+              <Label className="text-muted-foreground text-sm mb-1 block">
+                Outras políticas ou informações importantes (opcional)
+              </Label>
+              <Textarea value={form.additionalPolicies} onChange={set('additionalPolicies')} rows={2}
+                placeholder="Ex: Não trabalhamos com consignado. IPVA e seguro não inclusos no preço..." />
             </div>
           </CardContent>
         </Card>

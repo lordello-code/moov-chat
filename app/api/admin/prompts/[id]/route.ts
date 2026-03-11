@@ -30,25 +30,31 @@ export async function PATCH(
     const target = await prisma.promptConfig.findUnique({ where: { id } })
     if (!target) return notFound('Prompt')
 
-    await prisma.promptConfig.updateMany({
-      where: {
-        tenantId:  target.tenantId,
-        agentType: target.agentType,
-        isActive:  true,
-      },
-      data: { isActive: false },
-    })
-
-    const reactivated = await prisma.promptConfig.update({
-      where: { id },
-      data:  { isActive: true },
+    // Atomicamente: desativa ativos do mesmo (tenant, agentType), ativa o alvo
+    const reactivated = await prisma.$transaction(async (tx) => {
+      await tx.promptConfig.updateMany({
+        where: {
+          tenantId:  target.tenantId,
+          agentType: target.agentType,
+          isActive:  true,
+        },
+        data: { isActive: false },
+      })
+      return tx.promptConfig.update({
+        where: { id },
+        data:  { isActive: true },
+      })
     })
     return ok(reactivated)
   }
 
+  // Allowlist dos campos editáveis — nunca aceitar body raw
+  const { promptBase, blockStoreContext, blockPolicies, blockSecurity,
+          blockCampaigns, blockHandoff, blockToneOfVoice } = body
   const prompt = await prisma.promptConfig.update({
     where: { id },
-    data:  body,
+    data: { promptBase, blockStoreContext, blockPolicies, blockSecurity,
+            blockCampaigns, blockHandoff, blockToneOfVoice },
   })
   return ok(prompt)
 }
