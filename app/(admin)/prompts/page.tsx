@@ -1,11 +1,12 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+import { Eye, X, History } from 'lucide-react'
 
 type Prompt = {
   id: string
@@ -27,28 +28,60 @@ type Tenant = { id: string; name: string; slug: string }
 
 const AGENT_TYPES = ['SDR', 'VENDEDOR_IA', 'ORQUESTRADOR', 'QA', 'NOTIFICADOR_SLA']
 
+// ─── Monta o texto completo do prompt ────────────────────────────────────────────
+function assemblePrompt(p: {
+  promptBase: string
+  blockStoreContext: string | null
+  blockPolicies: string | null
+  blockSecurity: string | null
+  blockCampaigns: string | null
+  blockHandoff: string | null
+  blockToneOfVoice: string | null
+}): string {
+  const sections: string[] = [p.promptBase.trim()]
+  const blocks: [string, string | null][] = [
+    ['=== Contexto da Loja ===',     p.blockStoreContext],
+    ['=== Políticas Comerciais ===', p.blockPolicies],
+    ['=== Segurança ===',            p.blockSecurity],
+    ['=== Campanhas Ativas ===',     p.blockCampaigns],
+    ['=== Handoff ===',              p.blockHandoff],
+    ['=== Tom de Voz ===',          p.blockToneOfVoice],
+  ]
+  for (const [header, content] of blocks) {
+    if (content?.trim()) sections.push(`${header}\n${content.trim()}`)
+  }
+  return sections.join('\n\n')
+}
+
 export default function PromptsPage() {
-  const [prompts, setPrompts]   = useState<Prompt[]>([])
-  const [tenants, setTenants]   = useState<Tenant[]>([])
-  const [selected, setSelected] = useState<Prompt | null>(null)
-  const [loading, setLoading]   = useState(false)
+  const [prompts, setPrompts]       = useState<Prompt[]>([])
+  const [tenants, setTenants]       = useState<Tenant[]>([])
+  const [selected, setSelected]     = useState<Prompt | null>(null)
+  const [loading, setLoading]       = useState(false)
+  const [showAll, setShowAll]       = useState(false)
+  const [previewOpen, setPreview]   = useState(false)
 
   // Form state
-  const [tenantId, setTenantId]               = useState('global')
-  const [agentType, setAgentType]             = useState('SDR')
-  const [promptBase, setPromptBase]           = useState('')
-  const [blockStoreContext, setBlockStore]    = useState('')
-  const [blockPolicies, setBlockPolicies]     = useState('')
-  const [blockSecurity, setBlockSecurity]     = useState('')
-  const [blockCampaigns, setBlockCampaigns]   = useState('')
-  const [blockHandoff, setBlockHandoff]       = useState('')
-  const [blockToneOfVoice, setBlockTone]      = useState('')
+  const [tenantId, setTenantId]             = useState('global')
+  const [agentType, setAgentType]           = useState('SDR')
+  const [promptBase, setPromptBase]         = useState('')
+  const [blockStoreContext, setBlockStore]  = useState('')
+  const [blockPolicies, setBlockPolicies]   = useState('')
+  const [blockSecurity, setBlockSecurity]   = useState('')
+  const [blockCampaigns, setBlockCampaigns] = useState('')
+  const [blockHandoff, setBlockHandoff]     = useState('')
+  const [blockToneOfVoice, setBlockTone]    = useState('')
+
+  const fetchPrompts = useCallback(async () => {
+    const url = showAll ? '/api/admin/prompts?showAll=true' : '/api/admin/prompts'
+    const d = await fetch(url).then(r => r.json())
+    setPrompts(d.data ?? [])
+  }, [showAll])
 
   useEffect(() => {
-    fetch('/api/admin/prompts').then(r => r.json()).then(d => setPrompts(d.data ?? []))
-    // /api/admin/tenants retorna paginação: { data: { data: [...], total, ... } }
+    fetchPrompts()
     fetch('/api/admin/tenants').then(r => r.json()).then(d => setTenants(d.data?.data ?? []))
-  }, [])
+  }, [fetchPrompts])
 
   function loadPrompt(p: Prompt) {
     setSelected(p)
@@ -76,6 +109,14 @@ export default function PromptsPage() {
     setBlockTone('')
   }
 
+  // Texto do preview (usa o estado atual do formulário)
+  const previewText = assemblePrompt({
+    promptBase, blockStoreContext, blockPolicies,
+    blockSecurity, blockCampaigns, blockHandoff, blockToneOfVoice,
+  })
+  const charCount  = previewText.length
+  const tokenEst   = Math.ceil(charCount / 4)
+
   async function handleSave() {
     if (!promptBase.trim()) { toast.error('Prompt base é obrigatório'); return }
     setLoading(true)
@@ -98,8 +139,7 @@ export default function PromptsPage() {
       if (!res.ok) throw new Error('Erro ao salvar')
       toast.success('Prompt salvo com nova versão')
       resetForm()
-      const updated = await fetch('/api/admin/prompts').then(r => r.json())
-      setPrompts(updated.data ?? [])
+      fetchPrompts()
     } catch {
       toast.error('Erro ao salvar prompt')
     } finally {
@@ -110,65 +150,117 @@ export default function PromptsPage() {
   async function handleDeactivate(id: string) {
     await fetch(`/api/admin/prompts/${id}`, { method: 'DELETE' })
     toast.success('Prompt desativado')
-    const updated = await fetch('/api/admin/prompts').then(r => r.json())
-    setPrompts(updated.data ?? [])
+    fetchPrompts()
   }
 
+  async function handleReactivate(id: string) {
+    const res = await fetch(`/api/admin/prompts/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reactivate: true }),
+    })
+    if (res.ok) { toast.success('Versão reativada'); fetchPrompts() }
+    else toast.error('Erro ao reativar')
+  }
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Configuração de Prompts</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Lista de prompts ativos */}
-        <div className="lg:col-span-1 space-y-2">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Prompts Ativos</h2>
+        {/* ── Lista de prompts ── */}
+        <div className="lg:col-span-1 space-y-3">
+          {/* Toggle histórico */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              Prompts
+            </h2>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showAll}
+                onChange={e => setShowAll(e.target.checked)}
+                className="rounded"
+              />
+              <History size={12} />
+              Histórico
+            </label>
+          </div>
+
           {prompts.length === 0 && (
             <p className="text-sm text-muted-foreground py-4">Nenhum prompt configurado.</p>
           )}
+
           {prompts.map((p) => (
             <div
               key={p.id}
-              className="rounded-lg border border-border bg-card p-3 cursor-pointer hover:bg-secondary/50 transition-colors"
+              className={`rounded-lg border bg-card p-3 cursor-pointer hover:bg-secondary/50 transition-colors ${
+                selected?.id === p.id ? 'border-primary' : 'border-border'
+              }`}
               onClick={() => loadPrompt(p)}
             >
               <div className="flex items-center justify-between mb-1">
                 <Badge variant="outline" className="text-xs font-mono">{p.agentType}</Badge>
-                <span className="text-xs text-muted-foreground">v{p.version}</span>
+                <div className="flex items-center gap-1">
+                  {p.isActive
+                    ? <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">Ativo</span>
+                    : <span className="text-xs px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">Inativo</span>
+                  }
+                  <span className="text-xs text-muted-foreground">v{p.version}</span>
+                </div>
               </div>
               <p className="text-sm font-medium">{p.tenant?.name ?? 'Global'}</p>
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{p.promptBase}</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-destructive hover:text-destructive mt-2 h-6 px-2"
-                onClick={(e) => { e.stopPropagation(); handleDeactivate(p.id) }}
-              >
-                Desativar
-              </Button>
+              <div className="flex gap-2 mt-2">
+                {p.isActive ? (
+                  <Button
+                    variant="ghost" size="sm"
+                    className="text-xs text-destructive hover:text-destructive h-6 px-2"
+                    onClick={(e) => { e.stopPropagation(); handleDeactivate(p.id) }}
+                  >
+                    Desativar
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost" size="sm"
+                    className="text-xs text-primary hover:text-primary h-6 px-2"
+                    onClick={(e) => { e.stopPropagation(); handleReactivate(p.id) }}
+                  >
+                    Reativar
+                  </Button>
+                )}
+              </div>
             </div>
           ))}
         </div>
-
-        {/* Formulário de edição / criação */}
+        {/* ── Formulário ── */}
         <div className="lg:col-span-2 rounded-lg border border-border bg-card p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
               {selected ? `Editando v${selected.version} — nova versão será criada` : 'Novo Prompt'}
             </h2>
-            {selected && (
-              <Button variant="ghost" size="sm" onClick={resetForm} className="text-xs text-muted-foreground">
-                Limpar
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {promptBase && (
+                <Button
+                  variant="outline" size="sm"
+                  className="text-xs gap-1"
+                  onClick={() => setPreview(true)}
+                >
+                  <Eye size={12} /> Preview
+                </Button>
+              )}
+              {selected && (
+                <Button variant="ghost" size="sm" onClick={resetForm} className="text-xs text-muted-foreground">
+                  Limpar
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Loja (tenant)</Label>
               <Select value={tenantId} onValueChange={(v) => setTenantId(v ?? '')}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecionar loja" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Selecionar loja" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="global">Global (todas as lojas)</SelectItem>
                   {tenants.map(t => (
@@ -177,17 +269,12 @@ export default function PromptsPage() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-1">
               <Label>Tipo de Agente</Label>
               <Select value={agentType} onValueChange={(v) => setAgentType(v ?? '')}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {AGENT_TYPES.map(t => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
+                  {AGENT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -226,15 +313,34 @@ export default function PromptsPage() {
             ))}
           </div>
 
-          <Button
-            onClick={handleSave}
-            disabled={loading}
-            className="w-full bg-primary hover:bg-primary/90"
-          >
+          <Button onClick={handleSave} disabled={loading} className="w-full bg-primary hover:bg-primary/90">
             {loading ? 'Salvando...' : 'Salvar Nova Versão'}
           </Button>
         </div>
       </div>
+      {/* ── Dialog de Preview ── */}
+      {previewOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <div>
+                <h2 className="font-semibold">Preview do Prompt Montado</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {charCount.toLocaleString('pt-BR')} caracteres · ~{tokenEst.toLocaleString('pt-BR')} tokens
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setPreview(false)}>
+                <X size={16} />
+              </Button>
+            </div>
+            <textarea
+              readOnly
+              value={previewText}
+              className="flex-1 p-4 font-mono text-xs bg-secondary/30 resize-none focus:outline-none overflow-y-auto"
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
