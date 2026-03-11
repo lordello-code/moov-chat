@@ -15,7 +15,9 @@ export default auth((req) => {
   }
 
   if (!session?.user) {
-    return NextResponse.redirect(new URL('/auth/signin', req.url))
+    return pathname.startsWith('/api')
+      ? NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      : NextResponse.redirect(new URL('/auth/signin', req.url))
   }
 
   // Rotas admin: apenas SUPER_ADMIN (route group (admin) → URLs sem prefixo /admin)

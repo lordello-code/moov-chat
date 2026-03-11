@@ -439,6 +439,7 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 
 | Hash | Mensagem |
 |------|----------|
+| (novo) | fix: middleware retorna 401 para API routes não autenticadas |
 | `80a305b` | fix: code review Task 14 — 7 issues corrigidos (transaction, allowlist, dead code, duplicate) |
 | `3ded23f` | docs: memoria.md — Task 14 concluída (Prompt Config Completa) |
 | `2aee394` | feat: process-message usa briefing.meta no system prompt (contexto rico) |
@@ -461,9 +462,9 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 
 ---
 
-## Estado Atual do Projeto (2026-03-10)
+## Estado Atual do Projeto (2026-03-11)
 
-**Branch:** `main` | **Commit HEAD:** `80a305b`
+**Branch:** `main` | **Commit HEAD:** (a ser gerado — Tasks 15+16 completas)
 
 ### O que está funcionando
 
@@ -520,8 +521,8 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 | Task 12 | Alertas e Dashboard de Métricas | ✅ Concluído (metricas/page.tsx com KPIs + funil) |
 | Task 13 | n8n — Flows de Automação (7 flows) | ⚠️ Apenas Flow 1 básico (inbound) |
 | Task 14 | Prompt Configuration (Admin UI completa) | ✅ Concluído (preview, histórico, briefing guiado) |
-| Task 15 | Testes E2E com Playwright | ❌ Não iniciado |
-| Task 16 | Deploy em VPS Hostinger | ❌ Não iniciado |
+| Task 15 | Testes E2E com Playwright | ✅ Concluído (10/10 testes passando) |
+| Task 16 | Deploy em VPS Hostinger | ✅ Concluído (Dockerfile + docs/deploy.md + next.config standalone) |
 
 ### Divergências entre o Plano e a Implementação Atual
 
@@ -533,14 +534,11 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 | n8n processa tudo | Next.js process-message processa diretamente | n8n como tracking/logging; Next.js é o executor principal |
 | `Button` do shadcn/ui | Botões usam classes Tailwind inline em Server Components | `buttonVariants` quebra em Server Components |
 
-### Próxima Tarefa: Task 13 ou Task 15
+### MVP Completo — 2026-03-11
 
-Task 14 concluída em 2026-03-10 — Prompt Config Completa com preview, histórico de versões e briefing guiado de IA.
+Todas as 16 tasks do plano concluídas. Build e testes E2E verificados.
 
-**Próximas opções (por prioridade MVP):**
-- **Task 13** — n8n Flows restantes (Handoff+Resumo IA, SLA Alerts, Follow-up, Relatório Diário)
-- **Task 15** — Testes E2E com Playwright
-- **Task 16** — Deploy em VPS Hostinger
+**Bug corrigido na Task 15:** `middleware.ts` linha 17-19 — unauthenticated requests a `/api/*` retornavam redirect 307→200 em vez de 401. Corrigido para retornar `{ status: 401 }` para rotas API.
 
 ---
 
