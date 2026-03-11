@@ -9,12 +9,13 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const tenantId  = searchParams.get('tenantId')
   const agentType = searchParams.get('agentType') as any
+  const showAll   = searchParams.get('showAll') === 'true'
 
   const prompts = await prisma.promptConfig.findMany({
     where: {
       ...(tenantId  ? { tenantId }  : {}),
       ...(agentType ? { agentType } : {}),
-      isActive: true,
+      ...(showAll   ? {}            : { isActive: true }),
     },
     include: { tenant: { select: { name: true, slug: true } } },
     orderBy: [{ tenantId: 'asc' }, { agentType: 'asc' }, { version: 'desc' }],
