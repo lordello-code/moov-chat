@@ -25,9 +25,30 @@ export async function PATCH(
   if (session?.user.role !== 'SUPER_ADMIN') return forbidden()
   const { id } = await params
   const body = await req.json()
+
+  if (body.reactivate === true) {
+    const target = await prisma.promptConfig.findUnique({ where: { id } })
+    if (!target) return notFound('Prompt')
+
+    await prisma.promptConfig.updateMany({
+      where: {
+        tenantId:  target.tenantId,
+        agentType: target.agentType,
+        isActive:  true,
+      },
+      data: { isActive: false },
+    })
+
+    const reactivated = await prisma.promptConfig.update({
+      where: { id },
+      data:  { isActive: true },
+    })
+    return ok(reactivated)
+  }
+
   const prompt = await prisma.promptConfig.update({
     where: { id },
-    data: body,
+    data:  body,
   })
   return ok(prompt)
 }
