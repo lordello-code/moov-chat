@@ -32,7 +32,12 @@ export default async function FilaPage({
         take:    1,
       },
     },
-    orderBy: [{ isHot: 'desc' }, { updatedAt: 'desc' }],
+    orderBy: [
+      { isHot: 'desc' },
+      { hasUrgency: 'desc' },
+      { leadScore: 'desc' },
+      { updatedAt: 'desc' },
+    ],
     take: 50,
   })
 
