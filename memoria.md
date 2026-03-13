@@ -439,7 +439,8 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 
 | Hash | Mensagem |
 |------|----------|
-| `aab4eea` | fix: ESLint type safety — remove as any + React purity (branch `fix/eslint-type-safety`, PR #2) |
+| `22eaa8c` | Merge pull request #2 — fix: ESLint type safety (no-explicit-any + React purity) ✅ |
+| `aab4eea` | fix: corrigir erros de ESLint — type safety (no-explicit-any + purity) |
 | `a203326` | fix: middleware retorna 401 para API routes não autenticadas |
 | `80a305b` | fix: code review Task 14 — 7 issues corrigidos (transaction, allowlist, dead code, duplicate) |
 | `3ded23f` | docs: memoria.md — Task 14 concluída (Prompt Config Completa) |
@@ -465,15 +466,15 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 
 ## Estado Atual do Projeto (2026-03-13)
 
-**Branch:** `main` | **Commit HEAD:** `73d83dc`
+**Branch:** `main` | **Commit HEAD:** `3b119d4`
 
-### PR Aberto
+### Qualidade de Código
 
-| PR | Branch | Status |
-|----|--------|--------|
-| [#2 fix: ESLint type safety](https://github.com/lordello-code/moov-chat/pull/2) | `fix/eslint-type-safety` | 🟡 Aguardando merge |
-
-**Correções no PR:** 12 erros ESLint em 8 arquivos — `no-explicit-any` (tipos Prisma), `catch (e: unknown)`, `react-hooks/purity` (Date.now em render → useState+useEffect), extensão `interface User` NextAuth.
+| Check | Status |
+|-------|--------|
+| TypeScript (`tsc --noEmit`) | ✅ 0 erros |
+| ESLint (src) | ✅ 0 erros |
+| PR #2 merged | ✅ `fix/eslint-type-safety` → `main` |
 
 ---
 
