@@ -28,7 +28,7 @@ export default function EditarMembroPage() {
     fetch(`/api/${tenantSlug}/users`)
       .then(r => r.json())
       .then(d => {
-        const user = (d.data ?? []).find((u: any) => u.id === userId)
+        const user = (d.data ?? []).find((u: { id: string }) => u.id === userId)
         if (user) {
           setForm({
             name: user.name ?? '',

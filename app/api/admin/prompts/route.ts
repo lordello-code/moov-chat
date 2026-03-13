@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { ok, forbidden } from '@/lib/api-response'
+import { AgentType } from '@prisma/client'
 
 export async function GET(req: Request) {
   const session = await auth()
@@ -8,7 +9,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url)
   const tenantId  = searchParams.get('tenantId')
-  const agentType = searchParams.get('agentType') as any
+  const agentType = searchParams.get('agentType') as AgentType | null
   const showAll   = searchParams.get('showAll') === 'true'
 
   const prompts = await prisma.promptConfig.findMany({
