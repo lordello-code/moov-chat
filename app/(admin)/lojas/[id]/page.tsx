@@ -2,10 +2,8 @@ import { auth } from '@/lib/auth'
 import { redirect, notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { Badge } from '@/components/ui/badge'
-import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
-import { cn } from '@/lib/utils'
 
 export default async function LojaDetailPage({
   params,
@@ -42,8 +40,8 @@ export default async function LojaDetailPage({
             {tenant.status}
           </Badge>
           <Link
-            href="/admin/lojas"
-            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+            href="/lojas"
+            className="inline-flex items-center px-3 py-1.5 rounded-lg border border-border bg-background text-sm hover:bg-muted transition-colors"
           >
             ← Voltar
           </Link>

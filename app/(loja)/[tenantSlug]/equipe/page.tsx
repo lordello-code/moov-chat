@@ -2,10 +2,8 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { Badge } from '@/components/ui/badge'
-import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
-import { cn } from '@/lib/utils'
 
 export default async function EquipePage({
   params,
@@ -42,7 +40,7 @@ export default async function EquipePage({
         <h1 className="text-2xl font-bold">Equipe</h1>
         <Link
           href={`/${tenantSlug}/equipe/novo`}
-          className={cn(buttonVariants({ variant: 'default' }), 'bg-primary hover:bg-primary/90')}
+          className="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-medium px-3 py-1.5 hover:bg-primary/90 transition-all"
         >
           + Novo Membro
         </Link>
@@ -73,7 +71,7 @@ export default async function EquipePage({
                 </Badge>
                 <Link
                   href={`/${tenantSlug}/equipe/${u.id}`}
-                  className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-muted-foreground')}
+                  className="inline-flex items-center justify-center rounded-lg text-sm font-medium px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
                 >
                   Editar
                 </Link>

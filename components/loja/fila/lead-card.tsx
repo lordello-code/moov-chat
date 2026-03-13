@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Flame } from 'lucide-react'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 interface LeadCardProps {
@@ -26,8 +27,13 @@ interface LeadCardProps {
 export function LeadCard({ lead, tenantSlug }: LeadCardProps) {
   const conv = lead.conversations?.[0]
   const isAwaitingHuman = conv?.state === 'AGUARDANDO_VENDEDOR'
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [])
   const minutesWaiting = conv?.humanSlaStartedAt
-    ? Math.floor((Date.now() - new Date(conv.humanSlaStartedAt).getTime()) / 60000)
+    ? Math.floor((now - new Date(conv.humanSlaStartedAt).getTime()) / 60000)
     : null
 
   return (

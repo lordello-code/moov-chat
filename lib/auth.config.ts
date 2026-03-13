@@ -9,9 +9,9 @@ export const authConfig = {
     jwt({ token, user }) {
       if (user) {
         token.id         = user.id
-        token.role       = (user as any).role
-        token.tenantId   = (user as any).tenantId
-        token.tenantSlug = (user as any).tenantSlug
+        token.role       = user.role
+        token.tenantId   = user.tenantId
+        token.tenantSlug = user.tenantSlug
       }
       return token
     },

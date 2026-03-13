@@ -23,7 +23,24 @@ export async function POST(
     return NextResponse.json({ ok: true })
   }
 
-  // Encaminhar ao n8n de forma assíncrona (fire-and-forget)
+  console.log(`[Webhook] messages.upsert recebido para tenant: ${tenantSlug}`)
+
+  // Processar mensagem internamente (chamada direta ao endpoint interno)
+  // Em produção, isso será feito via n8n para orquestração avançada
+  const internalUrl = `${req.nextUrl.origin}/api/webhooks/internal/process-message`
+  fetch(internalUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Internal-Secret': process.env.NEXTJS_INTERNAL_API_SECRET ?? '',
+    },
+    body: JSON.stringify({ ...body, tenantSlug }),
+  })
+    .then(res => res.json())
+    .then(result => console.log('[Webhook] Processamento concluido:', JSON.stringify(result).substring(0, 200)))
+    .catch(err => console.error('[Webhook] Erro ao processar mensagem:', err))
+
+  // Também encaminhar ao n8n (quando disponível) para tracking/logging
   const n8nUrl = process.env.N8N_WEBHOOK_URL
   if (n8nUrl) {
     fetch(`${n8nUrl}/webhook/whatsapp-inbound`, {

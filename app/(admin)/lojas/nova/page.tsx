@@ -1,16 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
+interface Plan { id: string; name: string; priceMonthly: number }
+
 export default function NovaLojaPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [plans, setPlans] = useState<Plan[]>([])
   const [form, setForm] = useState({
     name: '',
     slug: '',
@@ -24,7 +27,17 @@ export default function NovaLojaPage() {
     state: '',
   })
 
-  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  useEffect(() => {
+    fetch('/api/admin/plans')
+      .then(r => r.json())
+      .then(d => {
+        setPlans(d.data ?? [])
+        if (d.data?.length > 0) setForm(f => ({ ...f, planId: d.data[0].id }))
+      })
+      .catch(() => {})
+  }, [])
+
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
 
   async function handleSubmit(e: React.FormEvent) {
@@ -42,9 +55,9 @@ export default function NovaLojaPage() {
         setError(json.error?.message ?? 'Erro ao criar loja')
         return
       }
-      router.push('/admin/lojas')
+      router.push('/lojas')
     } catch {
-      setError('Erro de conexão')
+      setError('Erro de conexão com o servidor')
     } finally {
       setLoading(false)
     }
@@ -68,8 +81,21 @@ export default function NovaLojaPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="planId">Plan ID *</Label>
-              <Input id="planId" value={form.planId} onChange={set('planId')} required placeholder="UUID do plano" />
+              <Label htmlFor="planId">Plano *</Label>
+              <select
+                id="planId"
+                value={form.planId}
+                onChange={set('planId')}
+                required
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {plans.length === 0 && <option value="">Carregando planos...</option>}
+                {plans.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} — R$ {p.priceMonthly}/mês
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -116,10 +142,10 @@ export default function NovaLojaPage() {
         {error && <p className="text-destructive text-sm">{error}</p>}
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90">
+          <Button type="submit" disabled={loading || plans.length === 0} className="bg-primary hover:bg-primary/90">
             {loading ? 'Criando...' : 'Criar Loja'}
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.push('/admin/lojas')}>
+          <Button type="button" variant="outline" onClick={() => router.push('/lojas')}>
             Cancelar
           </Button>
         </div>

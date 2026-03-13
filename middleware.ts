@@ -15,11 +15,14 @@ export default auth((req) => {
   }
 
   if (!session?.user) {
-    return NextResponse.redirect(new URL('/auth/signin', req.url))
+    return pathname.startsWith('/api')
+      ? NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      : NextResponse.redirect(new URL('/auth/signin', req.url))
   }
 
-  // Rotas admin: apenas SUPER_ADMIN
-  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+  // Rotas admin: apenas SUPER_ADMIN (route group (admin) → URLs sem prefixo /admin)
+  const ADMIN_PATHS = ['/dashboard', '/lojas', '/prompts']
+  if (ADMIN_PATHS.some(p => pathname.startsWith(p)) || pathname.startsWith('/api/admin')) {
     if (session.user.role !== 'SUPER_ADMIN') {
       return pathname.startsWith('/api')
         ? NextResponse.json({ error: 'Forbidden' }, { status: 403 })

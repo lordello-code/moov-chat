@@ -2,6 +2,10 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import {
+  LayoutDashboard, Store, FileText, Bike,
+  List, MessageSquare, BarChart2, Users, Settings, CheckSquare,
+} from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 interface NavItem {
@@ -11,13 +15,36 @@ interface NavItem {
   gerenteOnly?: boolean
 }
 
-interface SidebarProps {
-  items: NavItem[]
-  role: string
+function getAdminNavItems(): NavItem[] {
+  return [
+    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { label: 'Lojas',     href: '/lojas',     icon: Store },
+    { label: 'Catálogo',  href: '/catalogo',  icon: Bike },
+    { label: 'Prompts',   href: '/prompts',   icon: FileText },
+  ]
 }
 
-export function Sidebar({ items, role }: SidebarProps) {
+function getLojaNavItems(slug: string): NavItem[] {
+  return [
+    { label: 'Fila',       href: `/${slug}/fila`,       icon: List },
+    { label: 'Inbox',      href: `/${slug}/inbox`,      icon: MessageSquare },
+    { label: 'Catálogo',   href: `/${slug}/catalogo`,   icon: Bike,        gerenteOnly: true },
+    { label: 'Métricas',   href: `/${slug}/metricas`,   icon: BarChart2,   gerenteOnly: true },
+    { label: 'Equipe',     href: `/${slug}/equipe`,     icon: Users,       gerenteOnly: true },
+    { label: 'Config',     href: `/${slug}/config`,     icon: Settings,    gerenteOnly: true },
+    { label: 'Aprovações', href: `/${slug}/aprovacoes`, icon: CheckSquare, gerenteOnly: true },
+  ]
+}
+
+interface SidebarProps {
+  variant: 'admin' | 'loja'
+  role: string
+  tenantSlug?: string
+}
+
+export function Sidebar({ variant, role, tenantSlug = '' }: SidebarProps) {
   const pathname = usePathname()
+  const items = variant === 'admin' ? getAdminNavItems() : getLojaNavItems(tenantSlug)
 
   return (
     <aside className="w-60 min-h-screen bg-background border-r border-border flex flex-col">

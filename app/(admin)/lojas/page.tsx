@@ -2,9 +2,9 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { Badge } from '@/components/ui/badge'
-import { buttonVariants } from '@/components/ui/button'
+
 import Link from 'next/link'
-import { cn } from '@/lib/utils'
+
 
 export default async function LojasPage() {
   const session = await auth()
@@ -23,8 +23,8 @@ export default async function LojasPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Lojas</h1>
         <Link
-          href="/admin/lojas/nova"
-          className={cn(buttonVariants({ variant: 'default' }), 'bg-primary hover:bg-primary/90')}
+          href="/lojas/nova"
+          className="inline-flex items-center px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 transition-colors"
         >
           + Nova Loja
         </Link>
@@ -56,10 +56,16 @@ export default async function LojasPage() {
                     {t.status}
                   </Badge>
                 </td>
-                <td className="p-4 text-right">
+                <td className="p-4 text-right flex items-center justify-end gap-2">
                   <Link
-                    href={`/admin/lojas/${t.id}`}
-                    className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-muted-foreground hover:text-foreground')}
+                    href={`/${t.slug}/fila`}
+                    className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    Abrir Loja
+                  </Link>
+                  <Link
+                    href={`/lojas/${t.id}`}
+                    className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                   >
                     Editar
                   </Link>
