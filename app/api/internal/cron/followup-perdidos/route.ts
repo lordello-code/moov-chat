@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       scheduledTasks: {
         none: {
           taskType: 'REATIVACAO',
-          status:   { in: ['PENDING', 'DONE'] },
+          status:   { in: ['PENDING', 'DONE', 'FAILED'] },
         },
       },
     },

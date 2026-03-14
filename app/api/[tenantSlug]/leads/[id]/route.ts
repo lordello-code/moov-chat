@@ -32,6 +32,12 @@ export async function PUT(
   const body = await req.json()
   const { state, notes, primaryInterest, lossReason, lossDetail } = body
 
+  // Verify lead belongs to this tenant
+  const existing = await prisma.lead.findFirst({
+    where: { id, tenant: { slug: tenantSlug } },
+  })
+  if (!existing) return notFound('Lead')
+
   const lead = await prisma.lead.update({
     where: { id },
     data: {
@@ -48,16 +54,21 @@ export async function PUT(
   if (state === 'VENDIDO') {
     const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } })
     if (tenant) {
-      const executeAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-      await prisma.scheduledTask.create({
-        data: {
-          tenantId: tenant.id,
-          leadId:   id,
-          taskType: 'FOLLOWUP_3DIAS',
-          executeAt,
-          status:   'PENDING',
-        },
+      const alreadyScheduled = await prisma.scheduledTask.findFirst({
+        where: { leadId: id, taskType: 'FOLLOWUP_3DIAS', status: 'PENDING' },
       })
+      if (!alreadyScheduled) {
+        const executeAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+        await prisma.scheduledTask.create({
+          data: {
+            tenantId: tenant.id,
+            leadId:   id,
+            taskType: 'FOLLOWUP_3DIAS',
+            executeAt,
+            status:   'PENDING',
+          },
+        })
+      }
     }
   }
   return ok(lead)
