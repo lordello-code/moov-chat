@@ -27,10 +27,16 @@ export async function PUT(
 ) {
   const session = await auth()
   if (!session?.user) return forbidden()
-  const { id } = await params
+  const { id, tenantSlug } = await params
 
   const body = await req.json()
   const { state, notes, primaryInterest, lossReason, lossDetail } = body
+
+  // Verify lead belongs to this tenant
+  const existing = await prisma.lead.findFirst({
+    where: { id, tenant: { slug: tenantSlug } },
+  })
+  if (!existing) return notFound('Lead')
 
   const lead = await prisma.lead.update({
     where: { id },
@@ -43,5 +49,27 @@ export async function PUT(
       ...(state === 'VENDIDO' ? { soldAt: new Date() } : {}),
     },
   })
+
+  // Agendamento pós-venda: 3 dias após a venda
+  if (state === 'VENDIDO') {
+    const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } })
+    if (tenant) {
+      const alreadyScheduled = await prisma.scheduledTask.findFirst({
+        where: { leadId: id, taskType: 'FOLLOWUP_3DIAS', status: 'PENDING' },
+      })
+      if (!alreadyScheduled) {
+        const executeAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+        await prisma.scheduledTask.create({
+          data: {
+            tenantId: tenant.id,
+            leadId:   id,
+            taskType: 'FOLLOWUP_3DIAS',
+            executeAt,
+            status:   'PENDING',
+          },
+        })
+      }
+    }
+  }
   return ok(lead)
 }
