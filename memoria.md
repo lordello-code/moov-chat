@@ -1,7 +1,7 @@
 # MOOV Chat — Memória do Projeto
 
 > Arquivo mantido pelo Claude para preservar contexto entre sessões.
-> Atualizado em: 2026-03-10 — Task 14 concluída + code review aplicado. Commit HEAD: `80a305b`
+> Atualizado em: 2026-03-13 — Fase 2 Etapa 2.1 concluída (PR #3 merged). Commit HEAD: `be0854c`
 
 ---
 
@@ -466,7 +466,7 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 
 ## Estado Atual do Projeto (2026-03-13)
 
-**Branch:** `main` | **Commit HEAD:** `3b119d4`
+**Branch:** `main` | **Commit HEAD:** `be0854c`
 
 ### Qualidade de Código
 
@@ -475,6 +475,33 @@ forbidden()   → err('Forbidden', 'FORBIDDEN', 403)
 | TypeScript (`tsc --noEmit`) | ✅ 0 erros |
 | ESLint (src) | ✅ 0 erros |
 | PR #2 merged | ✅ `fix/eslint-type-safety` → `main` |
+| PR #3 merged | ✅ `feat/fase2-inteligencia` → `main` |
+
+### Fase 2 — Inteligência (Status)
+
+| Etapa | Descrição | Status |
+|-------|-----------|--------|
+| 2.1 | Inteligência Comercial (`isHot`, handoff auto, SLA cron, badges fila) | ✅ Concluído (PR #3) |
+| 2.2 | QA Monitoring (qualityCheck pós-envio, Admin QA Logs, alert ERRO_QA) | 🔲 Pendente |
+| 2.3 | Prompt Versionado (histórico + reativação já prontos; comparação visual pendente) | ⚠️ Parcial |
+| 2.4 | Recuperação de Leads (lossReason no schema, UI + cadência pendentes) | 🔲 Pendente |
+
+### Novos arquivos criados (PR #3)
+
+| Arquivo | O que faz |
+|---------|-----------|
+| `app/api/internal/cron/sla-check/route.ts` | Cron SLA — escalonamento 10min/30min/1h/2h |
+| `app/api/webhooks/internal/process-message/route.ts` | + analyzeIntelligence() + handoff detection + HandoffSummary |
+| `app/(loja)/[tenantSlug]/fila/page.tsx` | Ordenação multi-critério + badges |
+| `components/loja/fila/lead-card.tsx` | Badges 🔥⚡🎯 + score |
+
+### AlertType enum (após PR #3)
+
+```
+SLA_VENDEDOR | SLA_GERENTE | SLA_VENDEDOR_10MIN | SLA_VENDEDOR_30MIN
+SLA_GERENTE_1H | SLA_GERENTE_2H | LEAD_QUENTE | HANDOFF_PENDENTE
+CONCORRENTE_DETECTADO | URGENCIA_DETECTADA | ERRO_QA | PRECO_PENDENTE | ONBOARDING
+```
 
 ---
 
