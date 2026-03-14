@@ -76,6 +76,127 @@ function buildBriefingContext(
   return `\n\n--- INFORMAÇÕES DA LOJA ---\n${parts.join('\n\n')}`
 }
 
+// ─── Tipos de inteligência ────────────────────────────────────────────────────
+interface IntelligenceResult {
+  isHot: boolean
+  hasUrgency: boolean
+  mentionedCompetitor: boolean
+  competitorName: string | null
+  suggestedLeadScore: number
+}
+
+// ─── Análise de inteligência comercial por mensagem ───────────────────────────
+async function analyzeIntelligence(
+  messageText: string,
+  apiKey: string,
+  model: string,
+): Promise<IntelligenceResult | null> {
+  const prompt = `Analise esta mensagem de um cliente interessado em moto e retorne SOMENTE um JSON válido, sem markdown:
+{
+  "isHot": boolean,
+  "hasUrgency": boolean,
+  "mentionedCompetitor": boolean,
+  "competitorName": string | null,
+  "suggestedLeadScore": number
+}
+
+Critérios:
+- isHot: true se há intenção clara de compra com prazo/verba definidos
+- hasUrgency: true se cliente expressou urgência de tempo ("quero hoje", "só tenho hoje", "urgente")
+- mentionedCompetitor: true se citou outra loja ou marca concorrente
+- suggestedLeadScore: 0 a 100 — intenção de compra
+
+Mensagem: "${messageText.replace(/"/g, "'").substring(0, 500)}"`
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 150,
+        temperature: 0,
+      }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const text = (data.choices?.[0]?.message?.content?.trim() ?? '') as string
+    // Extrai JSON mesmo se vier com texto extra
+    const match = text.match(/\{[\s\S]*\}/)
+    if (!match) return null
+    return JSON.parse(match[0]) as IntelligenceResult
+  } catch {
+    return null
+  }
+}
+
+// ─── Geração de HandoffSummary via LLM ───────────────────────────────────────
+interface HandoffSummaryData {
+  contactReason: string
+  modelInterest: string | null
+  answeredQuestions: string
+  urgencySignals: string
+  negotiationStatus: string
+  handoffReason: string
+  nextStepSuggested: string
+}
+
+async function generateHandoffSummary(
+  history: Array<{ direction: string; contentText: string | null }>,
+  clientName: string | null,
+  apiKey: string,
+  model: string,
+): Promise<HandoffSummaryData | null> {
+  // clientName used implicitly via history context
+  void clientName
+  const transcript = history
+    .slice(-15)
+    .map(m => `${m.direction === 'INBOUND' ? 'Cliente' : 'IA'}: ${m.contentText ?? ''}`)
+    .join('\n')
+
+  const prompt = `Analise este histórico de conversa e retorne SOMENTE um JSON válido, sem markdown:
+{
+  "contactReason": "motivo principal do contato",
+  "modelInterest": "modelo de moto de interesse ou null",
+  "answeredQuestions": "quais perguntas o cliente fez e foram respondidas",
+  "urgencySignals": "sinais de urgência detectados ou 'Nenhum'",
+  "negotiationStatus": "em qual fase da negociação está",
+  "handoffReason": "por que está sendo transferido para humano",
+  "nextStepSuggested": "próximo passo sugerido para o vendedor"
+}
+
+Histórico:
+${transcript}`
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 400,
+        temperature: 0,
+      }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const text = (data.choices?.[0]?.message?.content?.trim() ?? '') as string
+    const match = text.match(/\{[\s\S]*\}/)
+    if (!match) return null
+    return JSON.parse(match[0]) as HandoffSummaryData
+  } catch {
+    return null
+  }
+}
+
 export async function POST(req: NextRequest) {
   // Validate internal secret
   const secret = req.headers.get('x-internal-secret')
@@ -201,6 +322,50 @@ export async function POST(req: NextRequest) {
 
     console.log(`[ProcessMessage] Inbound message saved. Conversation: ${conversation.id}`)
 
+    // ─── Intelligence Analysis (paralela à IA SDR) ────────────────────────────
+    let intelligence: IntelligenceResult | null = null
+    if (OPENAI_API_KEY && OPENAI_API_KEY.length > 10 && !OPENAI_API_KEY.endsWith('...')) {
+      const LLM_MODEL_INTEL = process.env.LLM_MODEL_INTELLIGENCE || 'gpt-4o-mini'
+      intelligence = await analyzeIntelligence(messageText, OPENAI_API_KEY, LLM_MODEL_INTEL)
+      console.log(`[ProcessMessage] Intelligence:`, intelligence)
+    }
+
+    // ─── Atualizar Lead com inteligência ──────────────────────────────────────
+    if (intelligence) {
+      const leadUpdate: Record<string, unknown> = {
+        leadScore: Math.max(lead.leadScore ?? 0, intelligence.suggestedLeadScore),
+      }
+      if (intelligence.isHot)                leadUpdate.isHot               = true
+      if (intelligence.hasUrgency)           leadUpdate.hasUrgency          = true
+      if (intelligence.mentionedCompetitor)  leadUpdate.mentionedCompetitor = true
+      if (intelligence.competitorName)       leadUpdate.competitorName      = intelligence.competitorName
+
+      await prisma.lead.update({ where: { id: lead.id }, data: leadUpdate })
+
+      // Criar alert CRITICAL se lead ficou quente
+      if (intelligence.isHot && !lead.isHot) {
+        const gerentes = await prisma.user.findMany({
+          where: { tenantId: tenant.id, role: 'GERENTE', status: 'ACTIVE' },
+        })
+        await Promise.all(
+          gerentes.map(g =>
+            prisma.alert.create({
+              data: {
+                tenantId:       tenant.id,
+                leadId:         lead.id,
+                conversationId: conversation.id,
+                userId:         g.id,
+                type:           'LEAD_QUENTE',
+                severity:       'CRITICAL',
+                message:        `🔥 Lead quente detectado: ${lead.name ?? lead.phone} demonstrou intenção clara de compra!`,
+              },
+            }),
+          ),
+        )
+        console.log(`[ProcessMessage] Lead quente! Alertas criados para ${gerentes.length} gerente(s)`)
+      }
+    }
+
     // ─── AI Response Generation ───
     // If conversation is not in IA mode, skip AI response
     if (conversation.state !== 'ATIVA_IA') {
@@ -290,6 +455,79 @@ export async function POST(req: NextRequest) {
         status: 'PENDING',
       },
     })
+
+    // ─── Handoff Detection ────────────────────────────────────────────────────
+    const HANDOFF_KEYWORDS = [
+      'vou conectar', 'vou te conectar', 'vou transferir',
+      'vendedor humano', 'especialista', 'nossa equipe vai',
+      'atendimento humano', 'colega vai', 'membro da equipe',
+    ]
+    const aiResponseLower = aiResponse.toLowerCase()
+    const isHandoff =
+      HANDOFF_KEYWORDS.some(kw => aiResponseLower.includes(kw)) ||
+      (intelligence?.isHot === true && intelligence?.hasUrgency === true)
+
+    if (isHandoff && conversation.state === 'ATIVA_IA') {
+      console.log(`[ProcessMessage] Handoff detectado — gerando HandoffSummary...`)
+
+      // Gerar HandoffSummary via LLM
+      let summaryData: HandoffSummaryData | null = null
+      if (OPENAI_API_KEY && OPENAI_API_KEY.length > 10 && !OPENAI_API_KEY.endsWith('...')) {
+        summaryData = await generateHandoffSummary(
+          history,
+          lead.name,
+          OPENAI_API_KEY,
+          process.env.LLM_MODEL_SDR || 'gpt-4o-mini',
+        )
+      }
+
+      // Salvar HandoffSummary
+      await prisma.handoffSummary.create({
+        data: {
+          conversationId:    conversation.id,
+          clientName:        lead.name,
+          clientPhone:       lead.phone,
+          contactReason:     summaryData?.contactReason     ?? 'Interesse em moto',
+          modelInterest:     summaryData?.modelInterest     ?? null,
+          answeredQuestions: summaryData?.answeredQuestions ?? '',
+          urgencySignals:    summaryData?.urgencySignals    ?? '',
+          negotiationStatus: summaryData?.negotiationStatus ?? '',
+          handoffReason:     summaryData?.handoffReason     ?? 'Solicitação de atendimento humano',
+          nextStepSuggested: summaryData?.nextStepSuggested ?? '',
+        },
+      })
+
+      // Atualizar estado da conversa
+      await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: {
+          state:             'AGUARDANDO_VENDEDOR',
+          humanSlaStartedAt: new Date(),
+        },
+      })
+
+      // Criar alert para vendedores e gerentes disponíveis
+      const vendedores = await prisma.user.findMany({
+        where: { tenantId: tenant.id, role: { in: ['VENDEDOR', 'GERENTE'] }, status: 'ACTIVE' },
+      })
+      await Promise.all(
+        vendedores.map(v =>
+          prisma.alert.create({
+            data: {
+              tenantId:       tenant.id,
+              leadId:         lead.id,
+              conversationId: conversation.id,
+              userId:         v.id,
+              type:           'HANDOFF_PENDENTE',
+              severity:       'WARNING',
+              message:        `📲 Lead ${lead.name ?? lead.phone} aguarda atendimento humano`,
+            },
+          }),
+        ),
+      )
+
+      console.log(`[ProcessMessage] Handoff completo! Conversa → AGUARDANDO_VENDEDOR`)
+    }
 
     // ─── Send via Evolution API ───
     let sentStatus = 'FAILED'

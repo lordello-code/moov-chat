@@ -14,6 +14,9 @@ interface LeadCardProps {
     phone: string
     state: string
     isHot: boolean
+    hasUrgency: boolean
+    leadScore: number
+    mentionedCompetitor: boolean
     primaryInterest: string | null
     conversations: Array<{
       id: string
@@ -48,6 +51,28 @@ export function LeadCard({ lead, tenantSlug }: LeadCardProps) {
         <div>
           <p className="font-medium">{lead.name ?? lead.phone}</p>
           <p className="text-muted-foreground text-sm">{lead.primaryInterest ?? 'Interesse não definido'}</p>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {lead.isHot && (
+              <span className="text-xs bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">
+                🔥 Lead Quente
+              </span>
+            )}
+            {lead.hasUrgency && (
+              <span className="text-xs bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">
+                ⚡ Urgente
+              </span>
+            )}
+            {lead.mentionedCompetitor && (
+              <span className="text-xs bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded">
+                🎯 Concorrente
+              </span>
+            )}
+            {lead.leadScore > 50 && (
+              <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">
+                Score {lead.leadScore}
+              </span>
+            )}
+          </div>
           {minutesWaiting !== null && (
             <p className={cn('text-xs mt-1', minutesWaiting > 30 ? 'text-red-400' : 'text-amber-400')}>
               Aguardando há {minutesWaiting}min
