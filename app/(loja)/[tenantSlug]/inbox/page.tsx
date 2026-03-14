@@ -34,7 +34,15 @@ export default async function InboxPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Inbox</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Inbox</h1>
+        <a
+          href={`/api/${tenantSlug}/leads/export`}
+          className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary/50 transition-colors"
+        >
+          ⬇ Exportar CSV
+        </a>
+      </div>
 
       {conversations.length === 0 && (
         <p className="text-muted-foreground text-center py-12">

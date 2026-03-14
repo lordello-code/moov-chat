@@ -19,7 +19,7 @@ export default async function MetricasPage({
   const from  = new Date(today.getFullYear(), today.getMonth(), 1) // 1º do mês
   const to    = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59)
 
-  const [totalLeads, byState, vendedores, hotLeads] = await Promise.all([
+  const [totalLeads, byState, vendedores, hotLeads, totalPerdidos, byLossReason] = await Promise.all([
     prisma.lead.count({
       where: { tenantId: tenant.id, createdAt: { gte: from, lte: to } },
     }),
@@ -38,6 +38,15 @@ export default async function MetricasPage({
     prisma.lead.count({
       where: { tenantId: tenant.id, isHot: true, createdAt: { gte: from, lte: to } },
     }),
+    prisma.lead.count({
+      where: { tenantId: tenant.id, state: 'PERDIDO', updatedAt: { gte: from, lte: to } },
+    }),
+    prisma.lead.groupBy({
+      by:      ['lossReason'],
+      where:   { tenantId: tenant.id, state: 'PERDIDO', lossReason: { not: null } },
+      _count:  true,
+      orderBy: { _count: { lossReason: 'desc' } },
+    }),
   ])
 
   const stateMap = Object.fromEntries(byState.map(s => [s.state, s._count]))
@@ -49,6 +58,7 @@ export default async function MetricasPage({
     { label: 'Leads Quentes',    value: hotLeads,                     color: 'text-primary' },
     { label: 'Vendas',           value: sold,                         color: 'text-emerald-400' },
     { label: 'Taxa Conversão',   value: `${conversionRate}%`,         color: '' },
+    { label: 'Leads Perdidos',   value: totalPerdidos,                color: 'text-red-400' },
   ]
 
   return (
@@ -90,6 +100,29 @@ export default async function MetricasPage({
           ))}
         </div>
       </div>
+
+      {/* Motivos de perda */}
+      {byLossReason.length > 0 && (
+        <div className="bg-card rounded-lg border border-border p-4">
+          <h2 className="font-medium mb-4">Motivos de Perda</h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-muted-foreground border-b border-border">
+                <th className="text-left pb-2">Motivo</th>
+                <th className="text-right pb-2">Leads</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byLossReason.map(r => (
+                <tr key={r.lossReason} className="border-b border-border/50">
+                  <td className="py-2">{r.lossReason}</td>
+                  <td className="py-2 text-right font-mono text-red-400">{r._count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Performance vendedores */}
       <div className="bg-card rounded-lg border border-border p-4">
