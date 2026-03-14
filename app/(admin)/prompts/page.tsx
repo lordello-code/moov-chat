@@ -60,6 +60,8 @@ export default function PromptsPage() {
   const [loading, setLoading]       = useState(false)
   const [showAll, setShowAll]       = useState(false)
   const [previewOpen, setPreview]   = useState(false)
+  const [compareWith, setCompareWith]   = useState<Prompt | null>(null)
+  const [compareOpen, setCompareOpen]   = useState(false)
 
   // Form state
   const [tenantId, setTenantId]             = useState('global')
@@ -205,6 +207,24 @@ export default function PromptsPage() {
                     ? <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">Ativo</span>
                     : <span className="text-xs px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">Inativo</span>
                   }
+                  {!p.isActive && showAll && (() => {
+                    const activeVersion = prompts.find(
+                      ap => ap.isActive && ap.agentType === p.agentType && ap.tenantId === p.tenantId
+                    )
+                    if (!activeVersion) return null
+                    return (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setCompareWith(p)
+                          setCompareOpen(true)
+                        }}
+                        className="ml-1 text-xs text-primary hover:underline"
+                      >
+                        Comparar
+                      </button>
+                    )
+                  })()}
                   <span className="text-xs text-muted-foreground">v{p.version}</span>
                 </div>
               </div>
@@ -341,6 +361,56 @@ export default function PromptsPage() {
           </div>
         </div>
       )}
+      {/* ── Dialog de Comparação ── */}
+      {compareOpen && compareWith && (() => {
+        const activeVersion = prompts.find(
+          ap => ap.isActive && ap.agentType === compareWith.agentType && ap.tenantId === compareWith.tenantId
+        )
+        const leftText  = activeVersion ? assemblePrompt(activeVersion) : '(sem versão ativa)'
+        const rightText = assemblePrompt(compareWith)
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            onClick={() => { setCompareOpen(false); setCompareWith(null) }}
+          >
+            <div
+              className="bg-card border border-border rounded-xl w-full max-w-5xl max-h-[90vh] flex flex-col gap-3 p-6 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">
+                  Comparar versões — {compareWith.agentType}
+                  {activeVersion ? ` v${activeVersion.version} vs v${compareWith.version}` : ''}
+                </h3>
+                <button
+                  onClick={() => { setCompareOpen(false); setCompareWith(null) }}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-4 flex-1 overflow-hidden min-h-0">
+                <div className="flex flex-col gap-1 overflow-hidden">
+                  <p className="text-xs font-medium text-green-500">
+                    ✅ Versão Ativa {activeVersion ? `(v${activeVersion.version})` : ''}
+                  </p>
+                  <pre className="flex-1 overflow-auto rounded-lg bg-muted p-3 text-xs whitespace-pre-wrap font-mono">
+                    {leftText}
+                  </pre>
+                </div>
+                <div className="flex flex-col gap-1 overflow-hidden">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    📜 Versão Histórica (v{compareWith.version})
+                  </p>
+                  <pre className="flex-1 overflow-auto rounded-lg bg-muted p-3 text-xs whitespace-pre-wrap font-mono">
+                    {rightText}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
