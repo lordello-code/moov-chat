@@ -31,6 +31,7 @@ interface ConversationViewProps {
       hasUrgency: boolean
       mentionedCompetitor: boolean
       leadScore: number
+      lossReason: string | null
       assignedVendedor?: { name: string } | null
     }
     messages: Message[]
