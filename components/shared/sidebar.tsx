@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard, Store, FileText, Bike,
+  LayoutDashboard, Store, FileText, Bike, ShieldCheck,
   List, MessageSquare, BarChart2, Users, Settings, CheckSquare,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -21,6 +21,7 @@ function getAdminNavItems(): NavItem[] {
     { label: 'Lojas',     href: '/lojas',     icon: Store },
     { label: 'Catálogo',  href: '/catalogo',  icon: Bike },
     { label: 'Prompts',   href: '/prompts',   icon: FileText },
+    { label: 'QA Logs',   href: '/qa-logs',   icon: ShieldCheck },
   ]
 }
 
