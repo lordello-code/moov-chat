@@ -197,6 +197,66 @@ ${transcript}`
   }
 }
 
+// ─── QA de qualidade da resposta IA ──────────────────────────────────────────
+interface QaCheckResult {
+  passed: boolean
+  issues: string[]
+  severity: 'WARNING' | 'CRITICAL'
+}
+
+async function qualityCheckResponse(
+  messageText: string,
+  aiResponse: string,
+  apiKey: string,
+  model: string,
+): Promise<QaCheckResult | null> {
+  const prompt = `Avalie a qualidade desta resposta de um assistente de vendas de motos.
+Retorne SOMENTE um JSON válido, sem markdown:
+{
+  "passed": boolean,
+  "issues": ["lista de problemas encontrados — vazia se passou"],
+  "severity": "WARNING" | "CRITICAL"
+}
+
+Critérios de reprovação (severity WARNING):
+- Resposta genérica que não responde à pergunta do cliente
+- Tom inadequado (grosseiro, impaciente)
+- Resposta muito curta sem valor (ex: "Ok!", "Entendido.")
+
+Critérios de reprovação (severity CRITICAL):
+- Inventou preço específico de moto ou parcela
+- Fez promessa que a loja provavelmente não pode cumprir
+- Aconselhou o cliente a ir a um concorrente
+- Resposta vazia ou com erro de sistema
+
+Mensagem do cliente: "${messageText.replace(/"/g, "'").substring(0, 300)}"
+Resposta da IA: "${aiResponse.replace(/"/g, "'").substring(0, 500)}"`
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 200,
+        temperature: 0,
+      }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const text = (data.choices?.[0]?.message?.content?.trim() ?? '') as string
+    const match = text.match(/\{[\s\S]*\}/)
+    if (!match) return null
+    return JSON.parse(match[0]) as QaCheckResult
+  } catch {
+    return null
+  }
+}
+
 export async function POST(req: NextRequest) {
   // Validate internal secret
   const secret = req.headers.get('x-internal-secret')
@@ -566,6 +626,40 @@ export async function POST(req: NextRequest) {
         consecutiveIaMessages: { increment: 1 },
       },
     })
+
+    // ─── QA Monitoring ────────────────────────────────────────────────────────
+    if (
+      OPENAI_API_KEY &&
+      OPENAI_API_KEY.length > 10 &&
+      !OPENAI_API_KEY.endsWith('...') &&
+      aiResponse &&
+      sentStatus === 'SENT'
+    ) {
+      const LLM_MODEL_QA = process.env.LLM_MODEL_INTELLIGENCE || 'gpt-4o-mini'
+      const qaResult = await qualityCheckResponse(messageText, aiResponse, OPENAI_API_KEY, LLM_MODEL_QA)
+      if (qaResult && !qaResult.passed) {
+        const gerentesQa = await prisma.user.findMany({
+          where: { tenantId: tenant.id, role: 'GERENTE', status: 'ACTIVE' },
+        })
+        const issueText = qaResult.issues.join('; ')
+        await Promise.all(
+          gerentesQa.map(g =>
+            prisma.alert.create({
+              data: {
+                tenantId:       tenant.id,
+                leadId:         lead.id,
+                conversationId: conversation.id,
+                userId:         g.id,
+                type:           'ERRO_QA',
+                severity:       qaResult.severity,
+                message:        `🔍 QA reprovado: ${issueText}`,
+              },
+            }),
+          ),
+        )
+        console.log(`[ProcessMessage] QA reprovado (${qaResult.severity}): ${issueText}`)
+      }
+    }
 
     console.log(`[ProcessMessage] Complete! Lead: ${lead.id}, Conversation: ${conversation.id}, Sent: ${sentStatus}`)
 
