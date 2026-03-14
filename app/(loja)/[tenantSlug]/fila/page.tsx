@@ -5,12 +5,16 @@ import { LeadCard } from '@/components/loja/fila/lead-card'
 
 export default async function FilaPage({
   params,
+  searchParams,
 }: {
-  params: Promise<{ tenantSlug: string }>
+  params:       Promise<{ tenantSlug: string }>
+  searchParams: Promise<{ cursor?: string }>
 }) {
   const session = await auth()
   if (!session?.user) redirect('/auth/signin')
   const { tenantSlug } = await params
+  const { cursor } = await searchParams
+  const PAGE_SIZE = 30
 
   const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } })
   if (!tenant) redirect('/auth/signin')
@@ -38,13 +42,18 @@ export default async function FilaPage({
       { leadScore: 'desc' },
       { updatedAt: 'desc' },
     ],
-    take: 50,
+    take:   PAGE_SIZE + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
   })
 
-  const urgent = leads.filter(
+  const hasMore    = leads.length > PAGE_SIZE
+  const page       = hasMore ? leads.slice(0, PAGE_SIZE) : leads
+  const nextCursor = hasMore ? page[page.length - 1].id : null
+
+  const urgent = page.filter(
     l => l.conversations[0]?.state === 'AGUARDANDO_VENDEDOR' || l.isHot
   )
-  const normal = leads.filter(l => !urgent.includes(l))
+  const normal = page.filter(l => !urgent.includes(l))
 
   return (
     <div className="space-y-6">
@@ -88,10 +97,21 @@ export default async function FilaPage({
         </div>
       )}
 
-      {leads.length === 0 && (
+      {page.length === 0 && (
         <p className="text-muted-foreground text-center py-12">
           Nenhum lead ativo no momento. 🎉
         </p>
+      )}
+
+      {nextCursor && (
+        <div className="pt-4 text-center">
+          <a
+            href={`/${tenantSlug}/fila?cursor=${nextCursor}`}
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-secondary/50 transition-colors"
+          >
+            Carregar mais leads →
+          </a>
+        </div>
       )}
     </div>
   )
