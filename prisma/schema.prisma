@@ -319,6 +319,8 @@ model Lead {
   @@unique([tenantId, phone])
   @@index([tenantId, isHot])
   @@index([assignedVendedorId])
+  @@index([tenantId, state])
+  @@index([tenantId, state, updatedAt])
   @@map("leads")
 }
 
@@ -363,6 +365,8 @@ model Conversation {
 
   @@index([tenantId])
   @@index([leadId])
+  @@index([tenantId, state])
+  @@index([state, humanSlaStartedAt])
   @@map("conversations")
 }
 
@@ -386,6 +390,7 @@ model Message {
 
   @@index([conversationId])
   @@index([tenantId])
+  @@index([conversationId, createdAt])
   @@map("messages")
 }
 
@@ -637,6 +642,7 @@ model Alert {
 
   @@index([tenantId, isRead])
   @@index([userId])
+  @@index([tenantId, type])
   @@map("alerts")
 }
 
