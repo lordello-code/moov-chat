@@ -436,11 +436,11 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Get conversation history
-    const history = await prisma.message.findMany({
+    // Get conversation history — capped at last 10 messages (window cap)
+    const historyRaw = await prisma.message.findMany({
       where: { conversationId: conversation.id },
       orderBy: { createdAt: 'asc' },
-      take: 20,
+      take: 10,
     })
 
     // Build OpenAI messages
@@ -454,10 +454,11 @@ export async function POST(req: NextRequest) {
       { role: 'system', content: systemPrompt },
     ]
 
-    for (const msg of history) {
+    for (const msg of historyRaw) {
+      const rawContent = msg.contentText || ''
       openaiMessages.push({
         role: msg.direction === 'INBOUND' ? 'user' : 'assistant',
-        content: msg.contentText || '',
+        content: rawContent.length > 500 ? rawContent.slice(0, 500) + '…' : rawContent,
       })
     }
 
@@ -534,7 +535,7 @@ export async function POST(req: NextRequest) {
       let summaryData: HandoffSummaryData | null = null
       if (OPENAI_API_KEY && OPENAI_API_KEY.length > 10 && !OPENAI_API_KEY.endsWith('...')) {
         summaryData = await generateHandoffSummary(
-          history,
+          historyRaw,
           lead.name,
           OPENAI_API_KEY,
           process.env.LLM_MODEL_SDR || 'gpt-4o-mini',
